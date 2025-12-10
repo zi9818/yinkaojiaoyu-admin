@@ -25,23 +25,14 @@ export default function OrderManagement(props) {
     value: 'all',
     label: '全部状态'
   }, {
-    value: 'pending',
-    label: '待支付'
+    value: 'REGISTERED',
+    label: '已报名'
   }, {
-    value: 'paid',
+    value: 'PAID',
     label: '已支付'
   }, {
-    value: 'confirmed',
-    label: '已确认'
-  }, {
-    value: 'completed',
-    label: '已完成'
-  }, {
-    value: 'cancelled',
+    value: 'CANCELLED',
     label: '已取消'
-  }, {
-    value: 'refunded',
-    label: '已退款'
   }];
 
   // 获取订单数据
@@ -93,12 +84,9 @@ export default function OrderManagement(props) {
   // 获取状态颜色
   const getStatusColor = status => {
     const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      paid: 'bg-blue-100 text-blue-800',
-      confirmed: 'bg-green-100 text-green-800',
-      completed: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
-      refunded: 'bg-gray-100 text-gray-800'
+      REGISTERED: 'bg-yellow-100 text-yellow-800',
+      PAID: 'bg-green-100 text-green-800',
+      CANCELLED: 'bg-red-100 text-red-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -106,12 +94,9 @@ export default function OrderManagement(props) {
   // 获取状态文本
   const getStatusText = status => {
     const texts = {
-      pending: '待支付',
-      paid: '已支付',
-      confirmed: '已确认',
-      completed: '已完成',
-      cancelled: '已取消',
-      refunded: '已退款'
+      REGISTERED: '已报名',
+      PAID: '已支付',
+      CANCELLED: '已取消'
     };
     return texts[status] || status;
   };
@@ -379,12 +364,9 @@ export default function OrderManagement(props) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">待支付</SelectItem>
-                      <SelectItem value="paid">已支付</SelectItem>
-                      <SelectItem value="confirmed">已确认</SelectItem>
-                      <SelectItem value="completed">已完成</SelectItem>
-                      <SelectItem value="cancelled">已取消</SelectItem>
-                      <SelectItem value="refunded">已退款</SelectItem>
+                      <SelectItem value="REGISTERED">已报名</SelectItem>
+                      <SelectItem value="PAID">已支付</SelectItem>
+                      <SelectItem value="CANCELLED">已取消</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
