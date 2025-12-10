@@ -37,7 +37,7 @@ export default function AdminDashboard(props) {
       const ordersResult = await db.collection('orders').get();
       const orders = ordersResult.data || [];
       const totalOrders = orders.length;
-      const totalRevenue = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+      const totalRevenue = orders.reduce((sum, order) => sum + (order.amount || 0), 0) / 100;
 
       // 获取活动总数
       const activitiesResult = await db.collection('activities').count();
