@@ -1,0 +1,77 @@
+
+  {
+    "name": "activities",
+    "title": "活动信息",
+    "schemas": [
+      {
+        "name": "activityId",
+        "title": "活动ID",
+        "type": "String"
+      },
+      {
+        "name": "title",
+        "title": "活动标题",
+        "type": "String"
+      },
+      {
+        "name": "subtitle",
+        "title": "活动副标题",
+        "type": "String"
+      },
+      {
+        "name": "desc",
+        "title": "活动描述",
+        "type": "MultiLineString"
+      },
+      {
+        "name": "price",
+        "title": "价格(元)",
+        "type": "Number"
+      },
+      {
+        "name": "bannerImages",
+        "title": "轮播图",
+        "type": "Array",
+        "items": {
+          "type": "Image"
+        }
+      },
+      {
+        "name": "detailImages",
+        "title": "详细图",
+        "type": "Array",
+        "items": {
+          "type": "Image"
+        }
+      },
+      {
+        "name": "isActive",
+        "title": "是否发布",
+        "type": "Boolean"
+      },
+      {
+        "name": "tags",
+        "title": "标签",
+        "type": "Array",
+        "items": {
+          "type": "String"
+        }
+      },
+      {
+        "name": "startTime",
+        "title": "开始时间",
+        "type": "Date"
+      },
+      {
+        "name": "endTime",
+        "title": "结束时间",
+        "type": "Date"
+      },
+      {
+        "name": "address",
+        "title": "活动地址",
+        "type": "String"
+      }
+    ]
+  }
+  

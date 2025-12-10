@@ -1,0 +1,33 @@
+
+{
+  "name": "users",
+  "title": "用户信息",
+  "schemas": [
+    {
+      "name": "userId",
+      "title": "用户ID",
+      "type": "String"
+    },
+    {
+      "name": "nickName",
+      "title": "昵称",
+      "type": "String"
+    },
+    {
+      "name": "avatarUrl",
+      "title": "头像",
+      "type": "Image"
+    },
+    {
+      "name": "openid",
+      "title": "OpenID",
+      "type": "String"
+    },
+    {
+      "name": "phoneNumber",
+      "title": "手机号",
+      "type": "String"
+    }
+  ]
+}
+  

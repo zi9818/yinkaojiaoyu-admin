@@ -1,0 +1,44 @@
+
+[
+  {
+    "_id": "21e0ff9369314506055488e367419eb5",
+    "userId": "USER_001",
+    "nickName": "张三",
+    "avatarUrl": "cloud://cloud1-5gbxpkfm1326eb73.636c/avatars/avatar1.jpg",
+    "openid": "otest_user_001",
+    "phoneNumber": "13800138001",
+    "createdAt": 1764837103601,
+    "updatedAt": 1764837103601
+  },
+  {
+    "_id": "21e0ff9369314506055488e470ed941f",
+    "userId": "USER_002",
+    "nickName": "李四",
+    "avatarUrl": "cloud://cloud1-5gbxpkfm1326eb73.636c/avatars/avatar2.jpg",
+    "openid": "otest_user_002",
+    "phoneNumber": "13900139002",
+    "createdAt": 1764837103601,
+    "updatedAt": 1764837103601
+  },
+  {
+    "_id": "21e0ff9369314506055488e51bf9cd8e",
+    "userId": "USER_003",
+    "nickName": "王五",
+    "avatarUrl": "cloud://cloud1-5gbxpkfm1326eb73.636c/avatars/avatar3.jpg",
+    "openid": "otest_user_003",
+    "phoneNumber": "13700137003",
+    "createdAt": 1764837103601,
+    "updatedAt": 1764837103601
+  },
+  {
+    "_id": "21e0ff9369314506055488e608d7b888",
+    "userId": "USER_004",
+    "nickName": "赵六",
+    "avatarUrl": "cloud://cloud1-5gbxpkfm1326eb73.636c/avatars/avatar4.jpg",
+    "openid": "otest_user_004",
+    "phoneNumber": "13600136004",
+    "createdAt": 1764837103601,
+    "updatedAt": 1764837103601
+  }
+]
+  

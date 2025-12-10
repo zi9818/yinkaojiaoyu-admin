@@ -1,0 +1,203 @@
+// @ts-ignore;
+import React from 'react';
+// @ts-ignore;
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Button } from '@/components/ui';
+// @ts-ignore;
+import { Badge, MapPin, Tag, ImageIcon } from 'lucide-react';
+
+// @ts-ignore;
+import { ActivityForm } from './ActivityForm';
+export function ActivityDialogs({
+  showCreateDialog,
+  setShowCreateDialog,
+  showEditDialog,
+  setShowEditDialog,
+  showDetailDialog,
+  setShowDetailDialog,
+  selectedActivity,
+  formData,
+  setFormData,
+  onCreateActivity,
+  onUpdateActivity,
+  onEdit,
+  onTogglePublish,
+  getStatusDisplay,
+  getStatusColor,
+  formatDateTime,
+  formatPrice,
+  handleBannerImageUpload,
+  handleRemoveBannerImage,
+  handleDetailImageUpload,
+  handleRemoveDetailImage,
+  handleAddTag,
+  handleRemoveTag })
+{
+  // 处理表单提交
+  const handleCreateSubmit = () => {
+    onCreateActivity();
+  };
+  const handleUpdateSubmit = () => {
+    onUpdateActivity();
+  };
+  return <>
+      {/* 创建活动对话框 */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">创建新活动</DialogTitle>
+          </DialogHeader>
+          
+          <ActivityForm formData={formData} setFormData={setFormData} onBannerImageUpload={handleBannerImageUpload} onRemoveBannerImage={handleRemoveBannerImage} onDetailImageUpload={handleDetailImageUpload} onRemoveDetailImage={handleRemoveDetailImage} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} isEdit={false} />
+          
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" size="lg" onClick={() => setShowCreateDialog(false)}>
+              取消
+            </Button>
+            <Button size="lg" onClick={handleCreateSubmit}>
+              创建活动
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 编辑活动对话框 */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">编辑活动</DialogTitle>
+          </DialogHeader>
+          
+          <ActivityForm formData={formData} setFormData={setFormData} onBannerImageUpload={handleBannerImageUpload} onRemoveBannerImage={handleRemoveBannerImage} onDetailImageUpload={handleDetailImageUpload} onRemoveDetailImage={handleRemoveDetailImage} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} isEdit={true} />
+          
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button size="lg" onClick={handleUpdateSubmit}>
+              更新活动
+            </Button>
+            <Button variant="outline" size="lg" onClick={() => setShowEditDialog(false)}>
+              取消
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 活动详情对话框 */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">{selectedActivity?.title}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* 基本信息 */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">基本信息</h3>
+              <div className="grid grid-cols-2 gap-4">
+                
+
+
+
+
+
+
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500">价格</label>
+                  <div className="mt-1 font-medium text-gray-900">
+                    {formatPrice(selectedActivity?.price)}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">开始时间</label>
+                  <div className="mt-1 text-gray-900">{formatDateTime(selectedActivity?.startTime)}</div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">结束时间</label>
+                  <div className="mt-1 text-gray-900">{formatDateTime(selectedActivity?.endTime)}</div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">最大参与人数</label>
+                  <div className="mt-1 text-gray-900">{selectedActivity?.maxParticipants || '不限'}</div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">创建时间</label>
+                  <div className="mt-1 text-gray-900">{formatDateTime(selectedActivity?.createdAt)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* 活动描述 */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">活动描述</h3>
+              <p className="text-gray-700 whitespace-pre-wrap">{selectedActivity?.desc}</p>
+            </div>
+
+            {/* 活动地址 */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3 flex items-center">
+                <MapPin className="w-4 h-4 mr-2" />
+                活动地址
+              </h3>
+              <p className="text-gray-700">{selectedActivity?.address}</p>
+            </div>
+
+            {/* 活动标签 */}
+            {selectedActivity?.tags && selectedActivity.tags.length > 0 && <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center">
+                  <Tag className="w-4 h-4 mr-2" />
+                  活动标签
+                </h3>
+                
+
+
+
+
+              </div>}
+
+            {/* 轮播图 */}
+            {selectedActivity?.bannerImages && selectedActivity.bannerImages.length > 0 && <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center">
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  轮播图
+                </h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {selectedActivity.bannerImages.map((img, index) => <div key={index} className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                      <img src={img} alt={`轮播图 ${index + 1}`} className="w-full h-full object-cover" />
+                    </div>)}
+                </div>
+              </div>}
+
+            {/* 详情图 */}
+            {selectedActivity?.detailImages && selectedActivity.detailImages.length > 0 && <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center">
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  详情图
+                </h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {selectedActivity.detailImages.map((img, index) => <div key={index} className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                      <img src={img} alt={`详情图 ${index + 1}`} className="w-full h-full object-cover" />
+                    </div>)}
+                </div>
+              </div>}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" size="lg" onClick={() => setShowDetailDialog(false)}>
+              关闭
+            </Button>
+            <Button size="lg" onClick={() => {
+            onEdit(selectedActivity);
+            setShowDetailDialog(false);
+          }}>
+              编辑
+            </Button>
+            <Button variant={selectedActivity?.isActive ? "destructive" : "default"} size="lg" onClick={() => {
+            onTogglePublish(selectedActivity);
+            setShowDetailDialog(false);
+          }}>
+              {selectedActivity?.isActive ? '下架' : '发布'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>;
+}

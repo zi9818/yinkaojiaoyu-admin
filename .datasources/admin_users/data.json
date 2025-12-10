@@ -1,0 +1,59 @@
+
+[
+  {
+    "_id": "admin_001",
+    "username": "admin",
+    "password": "admin123456",
+    "realName": "系统管理员",
+    "role": "admin",
+    "email": "admin@example.com",
+    "phoneNumber": "13800138000",
+    "isActive": true,
+    "lastLoginTime": "2024-12-08T10:30:00Z",
+    "permissions": [
+      "user_management",
+      "order_management", 
+      "activity_management",
+      "data_export",
+      "system_settings"
+    ],
+    "createdAt": 1764837103601,
+    "updatedAt": 1764837103601
+  },
+  {
+    "_id": "admin_002",
+    "username": "operator",
+    "password": "operator123456",
+    "realName": "运维人员",
+    "role": "operator",
+    "email": "operator@example.com",
+    "phoneNumber": "13800138001",
+    "isActive": true,
+    "lastLoginTime": "2024-12-08T09:15:00Z",
+    "permissions": [
+      "user_query",
+      "order_query",
+      "activity_view",
+      "data_export"
+    ],
+    "createdAt": 1764837103601,
+    "updatedAt": 1764837103601
+  },
+  {
+    "_id": "admin_003",
+    "username": "viewer",
+    "password": "viewer123456",
+    "realName": "查看员",
+    "role": "viewer",
+    "email": "viewer@example.com",
+    "phoneNumber": "13800138002",
+    "isActive": true,
+    "lastLoginTime": "2024-12-07T16:45:00Z",
+    "permissions": [
+      "data_export"
+    ],
+    "createdAt": 1764837103601,
+    "updatedAt": 1764837103601
+  }
+]
+  

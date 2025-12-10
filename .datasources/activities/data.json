@@ -1,0 +1,48 @@
+
+  [
+    {
+      "_id": "1b1c91c9693140d1039871e25747a4f7",
+      "activityId": "ACT_001",
+      "title": "2024冬季编程训练营",
+      "subtitle": "10天精品课程",
+      "desc": "专为青少年打造的编程入门课程，包含Scratch、Python基础、Web开发入门等精彩内容。",
+      "price": 299,
+      "bannerImages": [
+        "cloud://cloud1-5gbxpkfm1326eb73.636c-cloud1-5gbxpkfm1326eb73-1389895146/5ba09352c4ac8.jpg",
+        "cloud://cloud1-5gbxpkfm1326eb73.636c-cloud1-5gbxpkfm1326eb73-1389895146/0.png"
+      ],
+      "detailImages": [
+        "cloud://cloud1-5gbxpkfm1326eb73.636c-cloud1-5gbxpkfm1326eb73-1389895146/0.png",
+        "cloud://cloud1-5gbxpkfm1326eb73.636c-cloud1-5gbxpkfm1326eb73-1389895146/5ba09352c4ac8.jpg"
+      ],
+      "isActive": true,
+      "tags": ["编程入门", "Python", "Scratch", "项目实战"],
+      "startTime": "2024-01-15",
+      "endTime": "2024-01-25",
+      "address": "腾讯会议在线授课",
+      "createdAt": 1733630400000,
+      "updatedAt": 1733630400000
+    },
+    {
+      "_id": "1b1c91c9693140d1039871e510675978",
+      "activityId": "ACT_002",
+      "title": "数学思维训练营",
+      "subtitle": "20天思维提升",
+      "desc": "奥数金牌教练授课，培养数学思维，提高解题能力，为各类数学竞赛打基础。",
+      "price": 399,
+      "bannerImages": [
+        "cloud://cloud1-5gbxpkfm1326eb73.636c/posters/math.jpg"
+      ],
+      "detailImages": [
+        "cloud://cloud1-5gbxpkfm1326eb73.636c/details/math-detail.jpg"
+      ],
+      "isActive": false,
+      "tags": ["数学", "奥数", "思维训练", "竞赛"],
+      "startTime": "2024-02-10",
+      "endTime": "2024-03-01",
+      "address": "线下小班授课",
+      "createdAt": 1733630400000,
+      "updatedAt": 1733630400000
+    }
+  ]
+  

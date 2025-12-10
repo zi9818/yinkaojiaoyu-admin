@@ -1,0 +1,53 @@
+
+{
+  "name": "orders",
+  "title": "订单信息",
+  "schemas": [
+    {
+      "name": "activityId",
+      "title": "活动ID",
+      "type": "String"
+    },
+    {
+      "name": "userId",
+      "title": "用户ID",
+      "type": "String"
+    },
+    {
+      "name": "activityTitle",
+      "title": "活动名称",
+      "type": "String"
+    },
+    {
+      "name": "amount",
+      "title": "金额(分)",
+      "type": "Number"
+    },
+    {
+      "name": "status",
+      "title": "订单状态",
+      "type": "String"
+    },
+    {
+      "name": "userName",
+      "title": "用户姓名",
+      "type": "String"
+    },
+    {
+      "name": "userPhone",
+      "title": "用户手机号",
+      "type": "String"
+    },
+    {
+      "name": "payTime",
+      "title": "支付时间",
+      "type": "DateTime"
+    },
+    {
+      "name": "userInfo",
+      "title": "用户信息",
+      "type": "Object"
+    }
+  ]
+}
+  

@@ -1,0 +1,69 @@
+
+[
+  {
+    "_id": "21e0ff93693144e6055488c926415078",
+    "activityId": "ACT_001",
+    "userId": "USER_001",
+    "activityTitle": "2024冬季编程训练营",
+    "amount": 29900,
+    "status": "REGISTERED",
+    "userName": "张三",
+    "userPhone": "13800138001",
+    "userInfo": {
+      "nickName": "张三",
+      "phoneNumber": "13800138001"
+    },
+    "createdAt": 1764837103601,
+    "updatedAt": 1764837103601
+  },
+  {
+    "_id": "21e0ff93693144e6055488ca4814e645",
+    "activityId": "ACT_003",
+    "userId": "USER_002",
+    "activityTitle": "云南文旅亲子营",
+    "amount": 299900,
+    "status": "PAID",
+    "userName": "李四",
+    "userPhone": "13900139002",
+    "payTime": "2024-01-06T14:30:00Z",
+    "userInfo": {
+      "nickName": "李四",
+      "phoneNumber": "13900139002"
+    },
+    "createdAt": 1764837103601,
+    "updatedAt": 1764837103601
+  },
+  {
+    "_id": "21e0ff93693144e6055488cb19ea1883",
+    "activityId": "ACT_004",
+    "userId": "USER_003",
+    "activityTitle": "春季写作提升班",
+    "amount": 19900,
+    "status": "PENDING",
+    "userName": "王五",
+    "userPhone": "13700137003",
+    "userInfo": {
+      "nickName": "王五",
+      "phoneNumber": "13700137003"
+    },
+    "createdAt": 1764837103601,
+    "updatedAt": 1764837103601
+  },
+  {
+    "_id": "21e0ff93693144e6055488cc3bd4d363",
+    "activityId": "ACT_002",
+    "userId": "USER_004",
+    "activityTitle": "数学思维训练营",
+    "amount": 39900,
+    "status": "REGISTERED",
+    "userName": "赵六",
+    "userPhone": "13600136004",
+    "userInfo": {
+      "nickName": "赵六",
+      "phoneNumber": "13600136004"
+    },
+    "createdAt": 1764837103601,
+    "updatedAt": 1764837103601
+  }
+]
+  
