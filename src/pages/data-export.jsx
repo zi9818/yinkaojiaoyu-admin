@@ -21,7 +21,6 @@ export default function DataExport(props) {
   // 订单字段（不包含活动相关字段）
   const orderOnlyFields = [
     { id: '_id', label: '订单ID', checked: false },
-    { id: 'orderNo', label: '订单号', checked: true },
     { id: 'userId', label: '用户ID', checked: false },
     { id: 'userName', label: '用户姓名', checked: true },
     { id: 'userPhone', label: '用户手机', checked: true },

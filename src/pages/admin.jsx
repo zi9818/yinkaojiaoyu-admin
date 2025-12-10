@@ -297,8 +297,8 @@ export default function AdminDashboard(props) {
               <div className="space-y-4">
                 {recentOrders.length === 0 ? <p className="text-gray-500 text-center py-4">暂无订单</p> : recentOrders.map(order => <div key={order._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{order.orderNo}</h4>
-                      <p className="text-sm text-gray-500">{order.userName} - {formatAmount(order.totalAmount)}</p>
+                      <h4 className="font-medium text-gray-900">{order.activityTitle}</h4>
+                      <p className="text-sm text-gray-500">{order.userName} - {formatAmount(order.amount / 100)}</p>
                     </div>
                     <Badge className={getStatusColor(order.status)}>
                       {getStatusText(order.status)}

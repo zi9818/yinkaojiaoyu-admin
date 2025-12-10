@@ -340,7 +340,7 @@ export default function ActivityManagementPage(props) {
         title: formData.title.trim(),
         subtitle: formData.subtitle.trim(),
         desc: formData.desc.trim(),
-        price: parseFloat(formData.price) || 0,
+        price: Math.round((parseFloat(formData.price) || 0) * 100), // 元转分存储
         address: formData.address.trim(),
         startTime: formData.startTime,
         endTime: formData.endTime,
@@ -432,7 +432,7 @@ export default function ActivityManagementPage(props) {
         title: formData.title.trim(),
         subtitle: formData.subtitle.trim(),
         desc: formData.desc.trim(),
-        price: parseFloat(formData.price) || 0,
+        price: Math.round((parseFloat(formData.price) || 0) * 100), // 元转分存储
         address: formData.address.trim(),
         startTime: formData.startTime,
         endTime: formData.endTime,
@@ -588,7 +588,7 @@ export default function ActivityManagementPage(props) {
           title: fullActivity.title || '',
           subtitle: fullActivity.subtitle || '',
           desc: fullActivity.desc || '',
-          price: fullActivity.price?.toString() || '',
+          price: fullActivity.price ? (fullActivity.price / 100).toString() : '', // 分转元显示
           address: fullActivity.address || '',
           startTime: fullActivity.startTime || '',
           endTime: fullActivity.endTime || '',
@@ -681,10 +681,11 @@ export default function ActivityManagementPage(props) {
     }
   };
 
-  // 格式化价格
+  // 格式化价格（分转元显示）
   const formatPrice = price => {
     const numPrice = parseFloat(price) || 0;
-    return numPrice === 0 ? '免费' : `¥${numPrice.toFixed(2)}`;
+    const priceInYuan = numPrice / 100;
+    return priceInYuan === 0 ? '免费' : `¥${priceInYuan.toFixed(2)}`;
   };
 
   // 加载更多数据

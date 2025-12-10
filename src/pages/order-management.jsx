@@ -60,7 +60,7 @@ export default function OrderManagement(props) {
   useEffect(() => {
     let filtered = orders;
     if (searchTerm) {
-      filtered = filtered.filter(order => order.orderNo?.toLowerCase().includes(searchTerm.toLowerCase()) || order.userName?.toLowerCase().includes(searchTerm.toLowerCase()) || order.userPhone?.includes(searchTerm) || order.activityTitle?.toLowerCase().includes(searchTerm.toLowerCase()));
+      filtered = filtered.filter(order => order.userName?.toLowerCase().includes(searchTerm.toLowerCase()) || order.userPhone?.includes(searchTerm) || order.activityTitle?.toLowerCase().includes(searchTerm.toLowerCase()));
     }
     if (statusFilter !== 'all') {
       filtered = filtered.filter(order => order.status === statusFilter);
@@ -68,12 +68,13 @@ export default function OrderManagement(props) {
     setFilteredOrders(filtered);
   }, [orders, searchTerm, statusFilter]);
 
-  // 格式化金额
+  // 格式化金额（分转元）
   const formatAmount = amount => {
+    const amountInYuan = (amount || 0) / 100;
     return new Intl.NumberFormat('zh-CN', {
       style: 'currency',
       currency: 'CNY'
-    }).format(amount || 0);
+    }).format(amountInYuan);
   };
 
   // 格式化日期
@@ -112,8 +113,7 @@ export default function OrderManagement(props) {
     setSelectedOrder(order);
     setEditForm({
       status: order.status,
-      totalAmount: order.totalAmount,
-      paymentMethod: order.paymentMethod
+      amount: order.amount ? (order.amount / 100).toString() : '0' // 分转元显示
     });
     setIsEditDialogOpen(true);
   };
@@ -125,8 +125,7 @@ export default function OrderManagement(props) {
       const db = tcb.database();
       await db.collection('orders').doc(selectedOrder._id).update({
         status: editForm.status,
-        totalAmount: editForm.totalAmount,
-        paymentMethod: editForm.paymentMethod,
+        amount: Math.round((parseFloat(editForm.amount) || 0) * 100), // 元转分存储
         updatedAt: new Date()
       });
       await fetchOrders();
@@ -161,8 +160,8 @@ export default function OrderManagement(props) {
       const ordersData = result.data || [];
 
       // 生成CSV内容
-      const headers = ['订单号', '用户姓名', '用户手机', '活动标题', '总金额', '状态', '支付方式', '创建时间'];
-      const rows = ordersData.map(order => [order.orderNo || '', order.userName || '', order.userPhone || '', order.activityTitle || '', order.totalAmount || 0, getStatusText(order.status), order.paymentMethod || '', formatDate(order.createdAt)].join(','));
+      const headers = ['用户姓名', '用户手机', '活动标题', '总金额（元）', '状态', '创建时间'];
+      const rows = ordersData.map(order => [order.userName || '', order.userPhone || '', order.activityTitle || '', ((order.amount || 0) / 100).toFixed(2), getStatusText(order.status), formatDate(order.createdAt)].join(','));
       const csvContent = [headers.join(','), ...rows].join('\n');
 
       // 创建下载链接
@@ -212,7 +211,7 @@ export default function OrderManagement(props) {
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input placeholder="搜索订单号、用户姓名、手机号或活动标题..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+              <Input placeholder="搜索用户姓名、手机号或活动标题..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
           </div>
           <div className="flex gap-2">
@@ -236,7 +235,6 @@ export default function OrderManagement(props) {
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">订单号</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户信息</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">活动信息</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">金额</th>
@@ -247,16 +245,13 @@ export default function OrderManagement(props) {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredOrders.length === 0 ? <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                       <div className="flex flex-col items-center">
                         <FileText className="w-12 h-12 text-gray-300 mb-3" />
                         <p>暂无订单数据</p>
                       </div>
                     </td>
                   </tr> : filteredOrders.map(order => <tr key={order._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{order.orderNo}</div>
-                    </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
                         <div className="font-medium text-gray-900">{order.userName}</div>
@@ -269,7 +264,7 @@ export default function OrderManagement(props) {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{formatAmount(order.totalAmount)}</div>
+                      <div className="text-sm font-medium text-gray-900">{formatAmount(order.amount)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Badge className={getStatusColor(order.status)}>
@@ -307,16 +302,16 @@ export default function OrderManagement(props) {
             {selectedOrder && <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">订单号</label>
-                    <p className="mt-1 text-sm text-gray-900">{selectedOrder.orderNo}</p>
-                  </div>
-                  <div>
                     <label className="text-sm font-medium text-gray-500">订单状态</label>
                     <div className="mt-1">
                       <Badge className={getStatusColor(selectedOrder.status)}>
                         {getStatusText(selectedOrder.status)}
                       </Badge>
                     </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">总金额</label>
+                    <p className="mt-1 text-sm text-gray-900">{formatAmount(selectedOrder.amount)}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">用户姓名</label>
@@ -329,14 +324,6 @@ export default function OrderManagement(props) {
                   <div>
                     <label className="text-sm font-medium text-gray-500">活动标题</label>
                     <p className="mt-1 text-sm text-gray-900">{selectedOrder.activityTitle}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">总金额</label>
-                    <p className="mt-1 text-sm text-gray-900">{formatAmount(selectedOrder.totalAmount)}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">支付方式</label>
-                    <p className="mt-1 text-sm text-gray-900">{selectedOrder.paymentMethod || '未支付'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">创建时间</label>
@@ -371,28 +358,11 @@ export default function OrderManagement(props) {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">总金额</label>
-                  <Input type="number" value={editForm.totalAmount} onChange={e => setEditForm({
+                  <label className="text-sm font-medium text-gray-700">总金额（元）</label>
+                  <Input type="number" step="0.01" value={editForm.amount} onChange={e => setEditForm({
                 ...editForm,
-                totalAmount: parseFloat(e.target.value)
+                amount: e.target.value
               })} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">支付方式</label>
-                  <Select value={editForm.paymentMethod} onValueChange={value => setEditForm({
-                ...editForm,
-                paymentMethod: value
-              })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="wechat">微信支付</SelectItem>
-                      <SelectItem value="alipay">支付宝</SelectItem>
-                      <SelectItem value="cash">现金</SelectItem>
-                      <SelectItem value="bank">银行转账</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
