@@ -64,12 +64,10 @@ export default function DataExport(props) {
     orders: [...orderOnlyFields, ...activityRelatedFields],
     users: [
       { id: '_id', label: '用户ID', checked: false },
-      { id: 'name', label: '用户姓名', checked: true },
-      { id: 'phone', label: '手机号码', checked: true },
-      { id: 'email', label: '邮箱地址', checked: false },
-      { id: 'type', label: '用户类型', checked: true },
+      { id: 'nickName', label: '用户昵称', checked: true },
+      { id: 'phoneNumber', label: '手机号码', checked: true },
+      { id: 'openid', label: 'OpenID', checked: false },
       { id: 'avatarUrl', label: '头像URL', checked: false },
-      { id: 'nickName', label: '昵称', checked: false },
       { id: 'createdAt', label: '注册时间', checked: true },
       { id: 'updatedAt', label: '更新时间', checked: false }
     ]
