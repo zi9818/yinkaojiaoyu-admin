@@ -3,7 +3,7 @@ import React, { useState, useRef } from 'react';
 // @ts-ignore;
 import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge } from '@/components/ui';
 // @ts-ignore;
-import { X, Tag, Upload, Image as ImageIcon, Plus } from 'lucide-react';
+import { X, Tag, Upload, Image as ImageIcon, Plus, GripVertical } from 'lucide-react';
 
 // 独立的图片组件，支持云存储fileID
 function CloudImage({
@@ -61,8 +61,104 @@ export function ActivityForm({
 {
   const [bannerUploading, setBannerUploading] = useState(false);
   const [detailUploading, setDetailUploading] = useState(false);
+  const [draggedBannerIndex, setDraggedBannerIndex] = useState(null);
+  const [dragOverBannerIndex, setDragOverBannerIndex] = useState(null);
+  const [draggedDetailIndex, setDraggedDetailIndex] = useState(null);
+  const [dragOverDetailIndex, setDragOverDetailIndex] = useState(null);
   const bannerInputRef = useRef(null);
   const detailInputRef = useRef(null);
+
+  // 轮播图拖拽排序处理
+  const handleBannerDragStart = (e, index) => {
+    setDraggedBannerIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleBannerDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedBannerIndex !== index) {
+      setDragOverBannerIndex(index);
+    }
+  };
+
+  const handleBannerDragLeave = () => {
+    setDragOverBannerIndex(null);
+  };
+
+  const handleBannerDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedBannerIndex === null || draggedBannerIndex === dropIndex) {
+      setDraggedBannerIndex(null);
+      setDragOverBannerIndex(null);
+      return;
+    }
+
+    const newImages = [...formData.bannerImages];
+    const draggedImage = newImages[draggedBannerIndex];
+    newImages.splice(draggedBannerIndex, 1);
+    newImages.splice(dropIndex, 0, draggedImage);
+
+    setFormData((prev) => ({
+      ...prev,
+      bannerImages: newImages
+    }));
+
+    setDraggedBannerIndex(null);
+    setDragOverBannerIndex(null);
+  };
+
+  const handleBannerDragEnd = () => {
+    setDraggedBannerIndex(null);
+    setDragOverBannerIndex(null);
+  };
+
+  // 详情图拖拽排序处理
+  const handleDetailDragStart = (e, index) => {
+    setDraggedDetailIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  };
+
+  const handleDetailDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedDetailIndex !== index) {
+      setDragOverDetailIndex(index);
+    }
+  };
+
+  const handleDetailDragLeave = () => {
+    setDragOverDetailIndex(null);
+  };
+
+  const handleDetailDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedDetailIndex === null || draggedDetailIndex === dropIndex) {
+      setDraggedDetailIndex(null);
+      setDragOverDetailIndex(null);
+      return;
+    }
+
+    const newImages = [...formData.detailImages];
+    const draggedImage = newImages[draggedDetailIndex];
+    newImages.splice(draggedDetailIndex, 1);
+    newImages.splice(dropIndex, 0, draggedImage);
+
+    setFormData((prev) => ({
+      ...prev,
+      detailImages: newImages
+    }));
+
+    setDraggedDetailIndex(null);
+    setDragOverDetailIndex(null);
+  };
+
+  const handleDetailDragEnd = () => {
+    setDraggedDetailIndex(null);
+    setDragOverDetailIndex(null);
+  };
 
   // 处理文件上传到云存储
   const handleFileUpload = async (file, type) => {
@@ -333,19 +429,33 @@ export function ActivityForm({
           />
 
           {formData.bannerImages.length > 0 && <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">已上传的轮播图 ({formData.bannerImages.length}/5)</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">已上传的轮播图 ({formData.bannerImages.length}/5) <span className="text-gray-400 font-normal">- 拖拽可调整顺序</span></h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {formData.bannerImages.map((image, index) => <div key={index} className="relative group">
+                {formData.bannerImages.map((image, index) => (
+                  <div
+                    key={index}
+                    className={`relative group cursor-move ${draggedBannerIndex === index ? 'opacity-50' : ''} ${dragOverBannerIndex === index ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+                    draggable
+                    onDragStart={(e) => handleBannerDragStart(e, index)}
+                    onDragOver={(e) => handleBannerDragOver(e, index)}
+                    onDragLeave={handleBannerDragLeave}
+                    onDrop={(e) => handleBannerDrop(e, index)}
+                    onDragEnd={handleBannerDragEnd}
+                  >
                     <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-                      <CloudImage src={image} alt={`轮播图${index + 1}`} className="w-full h-full object-cover" />
+                      <CloudImage src={image} alt={`轮播图${index + 1}`} className="w-full h-full object-cover pointer-events-none" />
                     </div>
-                    <button type="button" onClick={() => onRemoveBannerImage(index)} className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" title="删除图片">
+                    <div className="absolute top-2 left-2 bg-white bg-opacity-80 text-gray-600 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow">
+                      <GripVertical className="w-4 h-4" />
+                    </div>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); onRemoveBannerImage(index); }} className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" title="删除图片">
                       <X className="w-3 h-3" />
                     </button>
                     <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
                       {index + 1}
                     </div>
-                  </div>)}
+                  </div>
+                ))}
               </div>
             </div>}
         </div>
@@ -390,19 +500,33 @@ export function ActivityForm({
           />
 
           {formData.detailImages.length > 0 && <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">已上传的详情图片 ({formData.detailImages.length}/10)</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">已上传的详情图片 ({formData.detailImages.length}/10) <span className="text-gray-400 font-normal">- 拖拽可调整顺序</span></h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {formData.detailImages.map((image, index) => <div key={index} className="relative group">
+                {formData.detailImages.map((image, index) => (
+                  <div
+                    key={index}
+                    className={`relative group cursor-move ${draggedDetailIndex === index ? 'opacity-50' : ''} ${dragOverDetailIndex === index ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+                    draggable
+                    onDragStart={(e) => handleDetailDragStart(e, index)}
+                    onDragOver={(e) => handleDetailDragOver(e, index)}
+                    onDragLeave={handleDetailDragLeave}
+                    onDrop={(e) => handleDetailDrop(e, index)}
+                    onDragEnd={handleDetailDragEnd}
+                  >
                     <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-                      <CloudImage src={image} alt={`详情图${index + 1}`} className="w-full h-full object-cover" />
+                      <CloudImage src={image} alt={`详情图${index + 1}`} className="w-full h-full object-cover pointer-events-none" />
                     </div>
-                    <button type="button" onClick={() => onRemoveDetailImage(index)} className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" title="删除图片">
+                    <div className="absolute top-2 left-2 bg-white bg-opacity-80 text-gray-600 rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow">
+                      <GripVertical className="w-4 h-4" />
+                    </div>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); onRemoveDetailImage(index); }} className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" title="删除图片">
                       <X className="w-3 h-3" />
                     </button>
                     <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
                       {index + 1}
                     </div>
-                  </div>)}
+                  </div>
+                ))}
               </div>
             </div>}
         </div>
