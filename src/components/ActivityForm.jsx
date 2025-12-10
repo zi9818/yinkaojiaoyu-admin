@@ -299,28 +299,39 @@ export function ActivityForm({
         <h3 className="text-lg font-medium text-gray-900">轮播图图片</h3>
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">上传轮播图</label>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+          <label
+            htmlFor="banner-upload"
+            className={`block border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors ${bannerUploading || formData.bannerImages.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
             <div className="text-center">
               <Upload className="mx-auto h-12 w-12 text-gray-400" />
               <div className="mt-2">
-                <label htmlFor="banner-upload" className="cursor-pointer">
-                  <span className="mt-2 block text-sm font-medium text-gray-900">
-                    点击上传图片或拖拽文件到此处
-                  </span>
-                  <span className="mt-1 block text-xs text-gray-500">
-                    支持 PNG, JPG, GIF 格式，单个文件不超过 5MB，最多5张
-                  </span>
-                </label>
-                <input id="banner-upload" ref={bannerInputRef} name="banner-upload" type="file" className="sr-only" accept="image/*" multiple onChange={handleBannerFileSelect} disabled={bannerUploading || formData.bannerImages.length >= 5} />
+                <span className="mt-2 block text-sm font-medium text-gray-900">
+                  点击上传图片
+                </span>
+                <span className="mt-1 block text-xs text-gray-500">
+                  支持 PNG, JPG, GIF 格式，单个文件不超过 5MB，最多5张
+                </span>
               </div>
               {bannerUploading && <div className="mt-2">
-                  <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    上传中...
-                  </div>
-                </div>}
+                <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  上传中...
+                </div>
+              </div>}
             </div>
-          </div>
-          
+          </label>
+          <input
+            id="banner-upload"
+            ref={bannerInputRef}
+            name="banner-upload"
+            type="file"
+            className="hidden"
+            accept="image/*"
+            multiple
+            onChange={handleBannerFileSelect}
+            disabled={bannerUploading || formData.bannerImages.length >= 5}
+          />
+
           {formData.bannerImages.length > 0 && <div className="mt-4">
               <h4 className="text-sm font-medium text-gray-700 mb-2">已上传的轮播图 ({formData.bannerImages.length}/5)</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -345,28 +356,39 @@ export function ActivityForm({
         <h3 className="text-lg font-medium text-gray-900">活动详情图片</h3>
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">上传详情图片</label>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+          <label
+            htmlFor="detail-upload"
+            className={`block border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors ${detailUploading || formData.detailImages.length >= 10 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
             <div className="text-center">
               <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
               <div className="mt-2">
-                <label htmlFor="detail-upload" className="cursor-pointer">
-                  <span className="mt-2 block text-sm font-medium text-gray-900">
-                    点击上传图片或拖拽文件到此处
-                  </span>
-                  <span className="mt-1 block text-xs text-gray-500">
-                    支持 PNG, JPG, GIF 格式，单个文件不超过 5MB，最多10张
-                  </span>
-                </label>
-                <input id="detail-upload" ref={detailInputRef} name="detail-upload" type="file" className="sr-only" accept="image/*" multiple onChange={handleDetailFileSelect} disabled={detailUploading || formData.detailImages.length >= 10} />
+                <span className="mt-2 block text-sm font-medium text-gray-900">
+                  点击上传图片
+                </span>
+                <span className="mt-1 block text-xs text-gray-500">
+                  支持 PNG, JPG, GIF 格式，单个文件不超过 5MB，最多10张
+                </span>
               </div>
               {detailUploading && <div className="mt-2">
-                  <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    上传中...
-                  </div>
-                </div>}
+                <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  上传中...
+                </div>
+              </div>}
             </div>
-          </div>
-          
+          </label>
+          <input
+            id="detail-upload"
+            ref={detailInputRef}
+            name="detail-upload"
+            type="file"
+            className="hidden"
+            accept="image/*"
+            multiple
+            onChange={handleDetailFileSelect}
+            disabled={detailUploading || formData.detailImages.length >= 10}
+          />
+
           {formData.detailImages.length > 0 && <div className="mt-4">
               <h4 className="text-sm font-medium text-gray-700 mb-2">已上传的详情图片 ({formData.detailImages.length}/10)</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

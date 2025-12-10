@@ -511,6 +511,52 @@ export default function ActivityManagementPage(props) {
     }
   };
 
+  // 图片上传回调函数
+  const handleBannerImageUpload = (fileID) => {
+    setFormData((prev) => ({
+      ...prev,
+      bannerImages: [...prev.bannerImages, fileID]
+    }));
+  };
+
+  const handleRemoveBannerImage = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      bannerImages: prev.bannerImages.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleDetailImageUpload = (fileID) => {
+    setFormData((prev) => ({
+      ...prev,
+      detailImages: [...prev.detailImages, fileID]
+    }));
+  };
+
+  const handleRemoveDetailImage = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      detailImages: prev.detailImages.filter((_, i) => i !== index)
+    }));
+  };
+
+  // 标签回调函数
+  const handleAddTag = (tag) => {
+    if (tag && tag.trim() && formData.tags.length < 4) {
+      setFormData((prev) => ({
+        ...prev,
+        tags: [...prev.tags, tag.trim().slice(0, 6)]
+      }));
+    }
+  };
+
+  const handleRemoveTag = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((_, i) => i !== index)
+    }));
+  };
+
   // 重置表单
   const resetForm = () => {
     setFormData({
@@ -673,7 +719,7 @@ export default function ActivityManagementPage(props) {
         <ActivityList activities={activities} loading={loading} onEdit={openEditDialog} onDelete={handleDeleteActivity} onView={openDetailDialog} onTogglePublish={handleTogglePublish} getStatusDisplay={getStatusDisplay} getStatusColor={getStatusColor} formatDateTime={formatDateTime} formatPrice={formatPrice} onLoadMore={handleLoadMore} hasMore={hasMore} />
 
         {/* 对话框 */}
-        <ActivityDialogs showCreateDialog={showCreateDialog} setShowCreateDialog={setShowCreateDialog} showEditDialog={showEditDialog} setShowEditDialog={setShowEditDialog} showDetailDialog={showDetailDialog} setShowDetailDialog={setShowDetailDialog} selectedActivity={selectedActivity} formData={formData} setFormData={setFormData} onCreateActivity={handleCreateActivity} onUpdateActivity={handleUpdateActivity} onEdit={openEditDialog} onTogglePublish={handleTogglePublish} getStatusDisplay={getStatusDisplay} getStatusColor={getStatusColor} formatDateTime={formatDateTime} formatPrice={formatPrice} />
+        <ActivityDialogs showCreateDialog={showCreateDialog} setShowCreateDialog={setShowCreateDialog} showEditDialog={showEditDialog} setShowEditDialog={setShowEditDialog} showDetailDialog={showDetailDialog} setShowDetailDialog={setShowDetailDialog} selectedActivity={selectedActivity} formData={formData} setFormData={setFormData} onCreateActivity={handleCreateActivity} onUpdateActivity={handleUpdateActivity} onEdit={openEditDialog} onTogglePublish={handleTogglePublish} getStatusDisplay={getStatusDisplay} getStatusColor={getStatusColor} formatDateTime={formatDateTime} formatPrice={formatPrice} handleBannerImageUpload={handleBannerImageUpload} handleRemoveBannerImage={handleRemoveBannerImage} handleDetailImageUpload={handleDetailImageUpload} handleRemoveDetailImage={handleRemoveDetailImage} handleAddTag={handleAddTag} handleRemoveTag={handleRemoveTag} />
       </div>
     </div>;
 }
