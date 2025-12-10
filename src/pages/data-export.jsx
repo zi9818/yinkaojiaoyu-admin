@@ -26,10 +26,9 @@ export default function DataExport(props) {
     { id: 'userName', label: '用户姓名', checked: true },
     { id: 'userPhone', label: '用户手机', checked: true },
     { id: 'activityId', label: '活动ID', checked: false },
-    { id: 'totalAmount', label: '总金额', checked: true },
+    { id: 'amount', label: '总金额', checked: true },
     { id: 'status', label: '订单状态', checked: true },
-    { id: 'paymentMethod', label: '支付方式', checked: false },
-    { id: 'paymentTime', label: '支付时间', checked: false },
+    { id: 'payTime', label: '支付时间', checked: false },
     { id: 'createdAt', label: '订单创建时间', checked: true },
     { id: 'updatedAt', label: '订单更新时间', checked: false }
   ];
@@ -161,8 +160,30 @@ export default function DataExport(props) {
 
   // 判断是否为时间字段
   const isTimeField = fieldId => {
-    const timeFields = ['createdAt', 'updatedAt', 'startTime', 'endTime', 'paymentTime', 'activity_startTime', 'activity_endTime'];
+    const timeFields = ['createdAt', 'updatedAt', 'startTime', 'endTime', 'payTime', 'activity_startTime', 'activity_endTime'];
     return timeFields.includes(fieldId);
+  };
+
+  // 订单状态转义
+  const formatOrderStatus = status => {
+    const statusMap = {
+      REGISTERED: '已报名',
+      PAID: '已支付',
+      CANCELLED: '已取消',
+      PENDING: '待支付'
+    };
+    return statusMap[status] || status;
+  };
+
+  // 活动发布状态转义
+  const formatActiveStatus = isActive => {
+    return isActive ? '已发布' : '未发布';
+  };
+
+  // 金额格式化（分转元）
+  const formatAmount = amount => {
+    if (amount === null || amount === undefined) return '';
+    return (amount / 100).toFixed(2);
   };
 
   // 检查是否选择了活动关联字段
@@ -239,14 +260,29 @@ export default function DataExport(props) {
       }
       setExportProgress(70);
 
-      // 过滤选中的字段
+      // 过滤选中的字段并进行格式化
       const filteredData = data.map(item => {
         const filteredItem = {};
         selectedFields.forEach(field => {
           let value = item[field];
+
+          // 时间字段格式化
           if (isTimeField(field)) {
             value = formatDateTime(value);
           }
+          // 订单状态格式化
+          else if (field === 'status' && exportType === 'orders') {
+            value = formatOrderStatus(value);
+          }
+          // 活动发布状态格式化
+          else if (field === 'isActive' || field === 'activity_isActive') {
+            value = formatActiveStatus(value);
+          }
+          // 金额格式化（分转元）
+          else if (field === 'amount' || field === 'price' || field === 'activity_price') {
+            value = formatAmount(value);
+          }
+
           filteredItem[field] = value;
         });
         return filteredItem;
