@@ -101,20 +101,43 @@ export default function AdminDashboard(props) {
   const getActiveStatusText = isActive => {
     return isActive ? '已发布' : '未发布';
   };
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('adminUser');
+    } catch (error) {
+      console.warn('清除登录状态失败:', error);
+    }
+    $w.utils.navigateTo({
+      pageId: 'login',
+      params: {}
+    });
+  };
   if (loading) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    return <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">加载中...</p>
         </div>
       </div>;
   }
-  return <div className="min-h-screen bg-gray-50 p-6">
+  return <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* 页面标题 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">管理后台</h1>
-          <p className="text-gray-600 mt-2">欢迎使用活动管理系统</p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-blue-600 mb-1">运营数据总览</p>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white">
+                <BarChart3 className="w-5 h-5" />
+              </span>
+              <span>管理后台</span>
+            </h1>
+            <p className="text-gray-600 mt-2">欢迎使用活动管理系统</p>
+          </div>
+          <Button variant="outline" className="self-start md:self-auto flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50" onClick={handleLogout}>
+            <LogOut className="w-4 h-4" />
+            <span>退出登录</span>
+          </Button>
         </div>
 
         {/* 统计卡片 */}
