@@ -81,21 +81,17 @@ export default function AdminDashboard(props) {
   };
   const getStatusColor = status => {
     const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      paid: 'bg-blue-100 text-blue-800',
-      confirmed: 'bg-green-100 text-green-800',
-      completed: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800'
+      REGISTERED: 'bg-yellow-100 text-yellow-800',
+      PAID: 'bg-green-100 text-green-800',
+      CANCELLED: 'bg-red-100 text-red-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
   const getStatusText = status => {
     const texts = {
-      pending: '待支付',
-      paid: '已支付',
-      confirmed: '已确认',
-      completed: '已完成',
-      cancelled: '已取消'
+      REGISTERED: '已报名',
+      PAID: '已支付',
+      CANCELLED: '已取消'
     };
     return texts[status] || status;
   };
