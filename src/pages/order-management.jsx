@@ -279,12 +279,6 @@ export default function OrderManagement(props) {
                         <Button variant="ghost" size="sm" onClick={() => viewOrderDetail(order)}>
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => editOrder(order)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => deleteOrder(order._id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
                       </div>
                     </td>
                   </tr>)}
