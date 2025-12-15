@@ -35,6 +35,7 @@ export default function ActivityManagementPage(props) {
     startTime: '',
     endTime: '',
     tags: [],
+    customerNumbers: [],
     bannerImages: [],
     detailImages: [],
     isActive: false,
@@ -51,6 +52,12 @@ export default function ActivityManagementPage(props) {
   // 获取当前时间戳（毫秒）
   const getCurrentTimestamp = () => {
     return Date.now();
+  };
+
+  const isValidCustomerNumber = (num) => {
+    if (typeof num !== 'string') return false;
+    const v = num.trim();
+    return /^1\d{10}$/.test(v);
   };
 
   // 优化后的活动数据加载 - 添加分页和字段投影，避免1MB限制
@@ -108,6 +115,7 @@ export default function ActivityManagementPage(props) {
         startTime: 1,
         endTime: 1,
         tags: 1,
+        customerNumbers: 1,
         bannerImages: {
           $slice: 1 // 只返回第一张轮播图用于列表显示
         },
@@ -299,6 +307,17 @@ export default function ActivityManagementPage(props) {
       return;
     }
 
+    const rawCustomerNumbers = Array.isArray(formData.customerNumbers) ? formData.customerNumbers : [];
+    const invalidCustomerNumbers = rawCustomerNumbers.filter(num => num && typeof num === 'string' && num.trim() && !isValidCustomerNumber(num));
+    if (invalidCustomerNumbers.length > 0) {
+      toast({
+        title: "验证失败",
+        description: `客户号码格式不正确（仅支持11位手机号），请检查：${invalidCustomerNumbers.slice(0, 5).join('、')}${invalidCustomerNumbers.length > 5 ? '…' : ''}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     // 如果要创建的活动是发布状态，检查是否已有发布的活动
     if (formData.isActive && checkHasPublishedActivity()) {
       const existingPublished = getPublishedActivity();
@@ -324,6 +343,10 @@ export default function ActivityManagementPage(props) {
             }
           }
         });
+        toast({
+          title: "下架成功",
+          description: `活动"${existingPublished.title}"已下架`
+        });
       } catch (error) {
         console.error('下架活动失败:', error);
         toast({
@@ -346,6 +369,7 @@ export default function ActivityManagementPage(props) {
         endTime: formData.endTime,
         // 修复：添加空值检查，确保 tag 不为 undefined
         tags: formData.tags.filter(tag => tag && typeof tag === 'string' && tag.trim()),
+        customerNumbers: (Array.isArray(formData.customerNumbers) ? formData.customerNumbers : []).filter(num => num && typeof num === 'string' && isValidCustomerNumber(num)),
         // 修复：添加空值检查，确保 img 不为 undefined
         bannerImages: formData.bannerImages.filter(img => img && typeof img === 'string' && img.trim()),
         // 修复：添加空值检查，确保 img 不为 undefined
@@ -391,6 +415,17 @@ export default function ActivityManagementPage(props) {
       return;
     }
 
+    const rawCustomerNumbers = Array.isArray(formData.customerNumbers) ? formData.customerNumbers : [];
+    const invalidCustomerNumbers = rawCustomerNumbers.filter(num => num && typeof num === 'string' && num.trim() && !isValidCustomerNumber(num));
+    if (invalidCustomerNumbers.length > 0) {
+      toast({
+        title: "验证失败",
+        description: `客户号码格式不正确（仅支持11位手机号），请检查：${invalidCustomerNumbers.slice(0, 5).join('、')}${invalidCustomerNumbers.length > 5 ? '…' : ''}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     // 如果要更新的活动是发布状态，且不是当前已发布的活动，检查是否已有发布的活动
     if (formData.isActive && !selectedActivity.isActive && checkHasPublishedActivity()) {
       const existingPublished = getPublishedActivity();
@@ -416,6 +451,10 @@ export default function ActivityManagementPage(props) {
             }
           }
         });
+        toast({
+          title: "下架成功",
+          description: `活动"${existingPublished.title}"已下架`
+        });
       } catch (error) {
         console.error('下架活动失败:', error);
         toast({
@@ -438,6 +477,7 @@ export default function ActivityManagementPage(props) {
         endTime: formData.endTime,
         // 修复：添加空值检查，确保 tag 不为 undefined
         tags: formData.tags.filter(tag => tag && typeof tag === 'string' && tag.trim()),
+        customerNumbers: (Array.isArray(formData.customerNumbers) ? formData.customerNumbers : []).filter(num => num && typeof num === 'string' && isValidCustomerNumber(num)),
         // 修复：添加空值检查，确保 img 不为 undefined
         bannerImages: formData.bannerImages.filter(img => img && typeof img === 'string' && img.trim()),
         // 修复：添加空值检查，确保 img 不为 undefined
@@ -568,6 +608,7 @@ export default function ActivityManagementPage(props) {
       startTime: '',
       endTime: '',
       tags: [],
+      customerNumbers: [],
       bannerImages: [],
       detailImages: [],
       isActive: false,
@@ -593,6 +634,7 @@ export default function ActivityManagementPage(props) {
           startTime: fullActivity.startTime || '',
           endTime: fullActivity.endTime || '',
           tags: fullActivity.tags || [],
+          customerNumbers: Array.isArray(fullActivity.customerNumbers) ? fullActivity.customerNumbers : [],
           bannerImages: fullActivity.bannerImages || [],
           detailImages: fullActivity.detailImages || [],
           isActive: fullActivity.isActive || false,

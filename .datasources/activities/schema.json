@@ -58,6 +58,14 @@
         }
       },
       {
+        "name": "customerNumbers",
+        "title": "客户号码",
+        "type": "Array",
+        "items": {
+          "type": "String"
+        }
+      },
+      {
         "name": "startTime",
         "title": "开始时间",
         "type": "Date"

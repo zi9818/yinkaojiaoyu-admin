@@ -44,7 +44,7 @@ function CloudImage({
   }, [src]);
   const handleError = (e) => {
     console.error('图片加载失败:', src);
-    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NSA2MEgxMTVWOTBIODVWNjBaIiBmaWxsPSIjRDFEREIiLz4KPHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4PSI4MCIgeT0iNTUiPgo8cmVjdCB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNEMUQ1REIiLz4KPHBhdGggZD0iTTEyIDIwSDI4VjI4SDEyVjIwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cjwvc3ZnPgo=';
+    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDIwMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04NSA2MEgxMTVWOTBIODVWNjBaIiBmaWxsPSIjRDFEREIiLz4KPHN2ZyB3aWR0aD0iNDAiIGhlaWg9IjQwIiB2aWV3Qm94PSIwIDAgNDAgNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeD0iODAiIHk9IjU1Ij4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRTVEQTQiLz4KPHBhdGggZD0iTTEyIDIwSDI4VjI4SDEyVjIwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cjwvc3ZnPgo=';
   };
   return <img src={imageUrl} alt={alt} className={className} onError={handleError} />;
 }
@@ -61,12 +61,43 @@ export function ActivityForm({
 {
   const [bannerUploading, setBannerUploading] = useState(false);
   const [detailUploading, setDetailUploading] = useState(false);
+  const [customerNumbersText, setCustomerNumbersText] = useState('');
+  const [customerNumbersError, setCustomerNumbersError] = useState('');
   const [draggedBannerIndex, setDraggedBannerIndex] = useState(null);
   const [dragOverBannerIndex, setDragOverBannerIndex] = useState(null);
   const [draggedDetailIndex, setDraggedDetailIndex] = useState(null);
   const [dragOverDetailIndex, setDragOverDetailIndex] = useState(null);
   const bannerInputRef = useRef(null);
   const detailInputRef = useRef(null);
+  const customerNumbersInputRef = useRef(null);
+
+  const isValidCustomerNumber = (num) => {
+    if (typeof num !== 'string') return false;
+    const v = num.trim();
+    return /^1\d{10}$/.test(v);
+  };
+
+  const parseCustomerNumbers = (text) => {
+    return (text || '')
+      .split(/\r?\n/)
+      .map(line => (line || '').trim())
+      .filter(Boolean);
+  };
+
+  React.useEffect(() => {
+    const current = Array.isArray(formData.customerNumbers) ? formData.customerNumbers : [];
+
+    if (typeof document === 'undefined') {
+      setCustomerNumbersText(current.join('\n'));
+      return;
+    }
+
+    const input = customerNumbersInputRef.current;
+    const isFocused = !!input && document.activeElement === input;
+    if (isFocused) return;
+
+    setCustomerNumbersText(current.join('\n'));
+  }, [formData.customerNumbers]);
 
   // 轮播图拖拽排序处理
   const handleBannerDragStart = (e, index) => {
@@ -249,6 +280,7 @@ export function ActivityForm({
       }
     }
   };
+
   return <div className="space-y-6">
       {/* 基本信息 */}
       <div className="space-y-4">
@@ -399,6 +431,40 @@ export function ActivityForm({
           {formData.tags.length >= 4 && (
             <p className="text-xs text-gray-500">已添加 4/4 个标签</p>
           )}
+        </div>
+      </div>
+
+      {/* 客户号码 */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium text-gray-900">客户号码</h3>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">每行一个号码</label>
+          <textarea
+            ref={customerNumbersInputRef}
+            value={customerNumbersText}
+            onChange={(e) => {
+              const value = e.target.value;
+              const parsed = parseCustomerNumbers(value);
+              const invalid = parsed.filter(item => !isValidCustomerNumber(item));
+              setCustomerNumbersText(value);
+              setCustomerNumbersError(invalid.length > 0 ? `存在 ${invalid.length} 条格式不正确（仅支持11位手机号）：${invalid.slice(0, 5).join('、')}${invalid.length > 5 ? '…' : ''}` : '');
+              setFormData((prev) => ({
+                ...prev,
+                customerNumbers: parsed
+              }));
+            }}
+            placeholder="例如：\n13800138000\n13900139000"
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            rows={4}
+          />
+          {customerNumbersError ? (
+            <div className="text-xs text-red-600">
+              {customerNumbersError}
+            </div>
+          ) : null}
+          <div className="text-xs text-gray-500">
+            已导入 {Array.isArray(formData.customerNumbers) ? formData.customerNumbers.length : 0} 个
+          </div>
         </div>
       </div>
 
