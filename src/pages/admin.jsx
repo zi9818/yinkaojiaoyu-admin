@@ -101,14 +101,18 @@ export default function AdminDashboard(props) {
   const getActiveStatusText = isActive => {
     return isActive ? '已发布' : '未发布';
   };
-  const handleLogout = () => {
+  const handleLogout = async () => {
     try {
-      localStorage.removeItem('adminUser');
+      const tcb = await $w.cloud.getCloudInstance();
+      const auth = tcb?.auth?.();
+      if (auth?.signOut) {
+        await auth.signOut();
+      }
     } catch (error) {
-      console.warn('清除登录状态失败:', error);
+      console.warn('退出登录失败:', error);
     }
     $w.utils.navigateTo({
-      pageId: 'login',
+      pageId: 'admin',
       params: {}
     });
   };
