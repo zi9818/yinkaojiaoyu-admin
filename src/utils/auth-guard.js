@@ -1,20 +1,29 @@
 export const CLOUDBASE_AUTH_APP_ID = '';
 export const ADMIN_ALLOWLIST_COLLECTION = 'admin_allowlist';
 
-const __authCache = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+const __AUTH_GLOBAL_KEY = '__yinkaojiaoyu_admin_cloudbase_auth__';
 
 function getAuthSingleton(tcb) {
   if (!tcb) return null;
-  if (!__authCache) {
-    return tcb?.auth?.();
+  const g = typeof globalThis !== 'undefined' ? globalThis : null;
+  if (g && g[__AUTH_GLOBAL_KEY]) {
+    return g[__AUTH_GLOBAL_KEY];
   }
-  const cached = __authCache.get(tcb);
-  if (cached) return cached;
   const auth = tcb?.auth?.();
-  if (auth) {
-    __authCache.set(tcb, auth);
+  if (g && auth) {
+    g[__AUTH_GLOBAL_KEY] = auth;
   }
   return auth;
+}
+
+function shouldForceLogin() {
+  try {
+    if (typeof window === 'undefined') return false;
+    const sp = new URLSearchParams(window.location.search || '');
+    return sp.get('forceLogin') === '1';
+  } catch (e) {
+    return false;
+  }
 }
 
 function getUidFromLoginState(loginState) {
@@ -53,6 +62,14 @@ export async function ensureAdminAccess($w) {
   const auth = getAuthSingleton(tcb);
   if (!auth) {
     throw new Error('当前环境未启用身份认证');
+  }
+
+  if (shouldForceLogin()) {
+    try {
+      if (auth?.signOut) {
+        await auth.signOut();
+      }
+    } catch (e) {}
   }
 
   let loginState = null;
