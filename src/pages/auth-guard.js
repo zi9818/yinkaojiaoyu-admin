@@ -7,6 +7,27 @@ function getUidFromLoginState(loginState) {
   return u.uid || u.userId || u.id || u._id || u.uuid || null;
 }
 
+function getLoginNameCandidatesFromLoginState(loginState) {
+  const u = loginState?.user;
+  if (!u) {
+    return {
+      username: null,
+      phone: null,
+      email: null
+    };
+  }
+
+  const username = u.username || u.userName || u.name || u.nickName || u.nickname || null;
+  const phone = u.phoneNumber || u.phone_number || u.phone || u.mobile || u.mobileNumber || null;
+  const email = u.email || u.mail || null;
+
+  return {
+    username,
+    phone,
+    email
+  };
+}
+
 export async function ensureAdminAccess($w) {
   const tcb = await $w?.cloud?.getCloudInstance?.();
   if (!tcb) {
@@ -43,37 +64,76 @@ export async function ensureAdminAccess($w) {
   }
 
   const uid = getUidFromLoginState(loginState);
-  if (!uid) {
-    return {
-      status: 'forbidden',
-      tcb,
-      auth,
-      uid: null
-    };
-  }
+  const {
+    username,
+    phone,
+    email
+  } = getLoginNameCandidatesFromLoginState(loginState);
 
   try {
     const db = tcb.database();
-    const res = await db
-      .collection(ADMIN_ALLOWLIST_COLLECTION)
-      .where({ uid, isActive: true })
-      .limit(1)
-      .get();
+    let res = null;
+    if (uid) {
+      res = await db
+        .collection(ADMIN_ALLOWLIST_COLLECTION)
+        .where({ uid, isActive: true })
+        .limit(1)
+        .get();
+    }
 
-    const ok = Array.isArray(res?.data) && res.data.length > 0;
+    const hasData = r => Array.isArray(r?.data) && r.data.length > 0;
+    if (!hasData(res) && username) {
+      res = await db
+        .collection(ADMIN_ALLOWLIST_COLLECTION)
+        .where({ loginName: String(username), isActive: true })
+        .limit(1)
+        .get();
+    }
+    if (!hasData(res) && phone) {
+      res = await db
+        .collection(ADMIN_ALLOWLIST_COLLECTION)
+        .where({ loginName: String(phone), isActive: true })
+        .limit(1)
+        .get();
+    }
+    if (!hasData(res) && email) {
+      res = await db
+        .collection(ADMIN_ALLOWLIST_COLLECTION)
+        .where({ loginName: String(email), isActive: true })
+        .limit(1)
+        .get();
+    }
+
+    const ok = hasData(res);
+
+    if (ok && uid) {
+      const doc = res.data[0];
+      if (doc && !doc.uid && doc._id) {
+        try {
+          await db
+            .collection(ADMIN_ALLOWLIST_COLLECTION)
+            .doc(doc._id)
+            .update({
+              data: {
+                uid
+              }
+            });
+        } catch (e) {}
+      }
+    }
 
     return {
       status: ok ? 'ok' : 'forbidden',
       tcb,
       auth,
-      uid
+      uid: uid || null
     };
   } catch (e) {
     return {
       status: 'forbidden',
       tcb,
       auth,
-      uid
+      uid: uid || null
     };
   }
 }
