@@ -4,12 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/components/ui';
 // @ts-ignore;
 import { Users, FileText, Database, TrendingUp, Calendar, DollarSign, Activity, ArrowRight, LogOut, User, Settings, BarChart3, Package, Download } from 'lucide-react';
-import { ensureAdminAccess } from '../utils/auth-guard';
+import { ensureAdminAccess } from './auth-guard';
 
 export default function AdminDashboard(props) {
   const {
     $w
   } = props;
+
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalOrders: 0,

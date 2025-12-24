@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Checkbox, Label } from '@/components/ui';
 // @ts-ignore;
 import { Download, FileText, Users, Calendar, Database, CheckCircle, AlertCircle, Clock, RefreshCw, ArrowLeft } from 'lucide-react';
-import { ensureAdminAccess } from '../utils/auth-guard';
+import { ensureAdminAccess } from './auth-guard';
 
 export default function DataExport(props) {
   const {

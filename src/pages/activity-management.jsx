@@ -4,11 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, useToast } from '@/components/ui';
 // @ts-ignore;
 import { Activity } from 'lucide-react';
-import { ensureAdminAccess } from '../utils/auth-guard';
+import { ensureAdminAccess } from './auth-guard';
 
 // @ts-ignore;
 import { ActivityList } from '@/components/ActivityList';
 // @ts-ignore;
+
 import { ActivityFilters } from '@/components/ActivityFilters';
 
 // @ts-ignore;
