@@ -3,7 +3,7 @@ import React from 'react';
 // @ts-ignore;
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Button, Badge } from '@/components/ui';
 // @ts-ignore;
-import { MapPin, Calendar, Users, Clock, Eye, Image as ImageIcon, Tag, DollarSign } from 'lucide-react';
+import { MapPin, Calendar, Users, Clock, Eye, Image as ImageIcon, Tag, DollarSign, Phone } from 'lucide-react';
 
 export function ActivityDetailDialog({
   open,
@@ -79,6 +79,25 @@ export function ActivityDetailDialog({
             </h3>
             <p className="text-gray-700">{activity.address}</p>
           </div>
+
+          {/* 客户号码 */}
+          {activity.customerNumbers && activity.customerNumbers.length > 0 && <div>
+              <h3 className="text-lg font-semibold mb-3 flex items-center">
+                <Phone className="w-4 h-4 mr-2" />
+                客户号码
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {activity.customerNumbers.map((phone, index) => <div key={index} className="flex items-center space-x-2 text-sm text-gray-700 bg-white px-3 py-2 rounded border border-gray-200">
+                      <Phone className="w-3 h-3 text-gray-400" />
+                      <span>{phone}</span>
+                    </div>)}
+                </div>
+                <div className="mt-2 text-xs text-gray-500">
+                  共 {activity.customerNumbers.length} 个客户号码
+                </div>
+              </div>
+            </div>}
 
           {/* 活动标签 */}
           {activity.tags && activity.tags.length > 0 && <div>

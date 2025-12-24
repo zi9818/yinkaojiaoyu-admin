@@ -1,8 +1,10 @@
 // @ts-ignore;
 import React from 'react';
 // @ts-ignore;
-import { Card, CardContent, Button, Badge } from '@/components/ui'; // @ts-ignore;
-import { Edit, Trash2, Eye, Calendar, MapPin, Users, Clock, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Card, CardContent, Button, Badge } from '@/components/ui';
+// @ts-ignore;
+import { Edit, Trash2, Eye, Calendar, MapPin, Users, Clock, ToggleLeft, ToggleRight, Phone } from 'lucide-react';
+
 export function ActivityCard({
   activity,
   onEdit,
@@ -12,18 +14,18 @@ export function ActivityCard({
   getStatusDisplay,
   getStatusColor,
   formatDateTime,
-  formatPrice })
-{
+  formatPrice
+}) {
   // 获取云存储文件的临时访问链接
-  const getTempFileURL = async (fileID) => {
+  const getTempFileURL = async fileID => {
     try {
       const tcb = await window.$w?.cloud?.getCloudInstance();
       if (!tcb) {
         return fileID; // 如果无法获取云实例，直接返回fileID
       }
       const result = await tcb.getTempFileURL({
-        fileList: [fileID] });
-
+        fileList: [fileID]
+      });
       if (result.fileList && result.fileList.length > 0) {
         return result.fileList[0].tempFileURL;
       }
@@ -36,18 +38,19 @@ export function ActivityCard({
 
   // 渲染图片组件，支持云存储fileID
   // 渲染图片组件，支持云存储fileID
-  const renderImage = (src, alt, className) => {// 如果是云存储的fileID格式，尝试获取临时链接
+  const renderImage = (src, alt, className) => {
+    // 如果是云存储的fileID格式，尝试获取临时链接
     if (src && typeof src === 'string' && (src.includes('cloud://') || src.includes('tcb://'))) {
       // 使用state来存储临时链接，避免重复请求
       const [tempUrl, setTempUrl] = React.useState(src);
       React.useEffect(() => {
-        getTempFileURL(src).then((url) => {
+        getTempFileURL(src).then(url => {
           if (url !== src) {
             setTempUrl(url);
           }
         });
       }, [src]);
-      return <img src={tempUrl} alt={alt} className={className} onError={(e) => {
+      return <img src={tempUrl} alt={alt} className={className} onError={e => {
         console.error('图片加载失败:', src);
         e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMzUgNzVIMTY1VjEyNUgxMzVWNzVaIiBmaWxsPSIjRDFEREIiLz4KPHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4PSIxMjAiIHk9IjcwIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjRDFEREIiLz4KPHBhdGggZD0iTTE4IDMwSDQyVjQySDE4VjMwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cjwvc3ZnPgo=';
       }} />;
@@ -55,7 +58,8 @@ export function ActivityCard({
 
     // 普通URL或base64图片
     // 普通URL或base64图片
-    return <img src={src} alt={alt} className={className} onError={(e) => {console.error('图片加载失败:', src);
+    return <img src={src} alt={alt} className={className} onError={e => {
+      console.error('图片加载失败:', src);
       e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMzUgNzVIMTY1VjEyNUgxMzVWNzVaIiBmaWxsPSIjRDFEREIiLz4KPHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4PSIxMjAiIHk9IjcwIj4KPHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjRDFEREIiLz4KPHBhdGggZD0iTTE4IDMwSDQyVjQySDE4VjMwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cjwvc3ZnPgo=';
     }} />;
   };
@@ -116,6 +120,14 @@ export function ActivityCard({
               <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
               <span className="line-clamp-1">
                 {activity.address}
+              </span>
+            </div>}
+
+          {/* 客户号码 */}
+          {activity.customerNumbers && activity.customerNumbers.length > 0 && <div className="flex items-center text-sm text-gray-500">
+              <Phone className="w-4 h-4 mr-2 flex-shrink-0" />
+              <span className="line-clamp-1">
+                {activity.customerNumbers.length} 个客户号码
               </span>
             </div>}
         </div>

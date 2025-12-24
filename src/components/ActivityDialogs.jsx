@@ -3,7 +3,7 @@ import React from 'react';
 // @ts-ignore;
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Button } from '@/components/ui';
 // @ts-ignore;
-import { Badge, MapPin, Tag, ImageIcon } from 'lucide-react';
+import { Badge, MapPin, Tag, ImageIcon, Phone } from 'lucide-react';
 
 // @ts-ignore;
 import { ActivityForm } from './ActivityForm';
@@ -30,8 +30,8 @@ export function ActivityDialogs({
   handleDetailImageUpload,
   handleRemoveDetailImage,
   handleAddTag,
-  handleRemoveTag })
-{
+  handleRemoveTag
+}) {
   // 处理表单提交
   const handleCreateSubmit = () => {
     onCreateActivity();
@@ -93,6 +93,14 @@ export function ActivityDialogs({
               <h3 className="text-lg font-semibold mb-3">基本信息</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="text-sm font-medium text-gray-500">状态</label>
+                  <div className="mt-1">
+                    <Badge className={getStatusColor(selectedActivity?.isActive)}>
+                      {getStatusDisplay(selectedActivity?.isActive)}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
                   <label className="text-sm font-medium text-gray-500">价格</label>
                   <div className="mt-1 font-medium text-gray-900">
                     {formatPrice(selectedActivity?.price)}
@@ -136,17 +144,36 @@ export function ActivityDialogs({
               <p className="text-gray-700">{selectedActivity?.address}</p>
             </div>
 
+            {/* 客户号码 */}
+            {selectedActivity?.customerNumbers && selectedActivity.customerNumbers.length > 0 && <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center">
+                  <Phone className="w-4 h-4 mr-2" />
+                  客户号码
+                </h3>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {selectedActivity.customerNumbers.map((phone, index) => <div key={index} className="flex items-center space-x-2 text-sm text-gray-700 bg-white px-3 py-2 rounded border border-gray-200">
+                        <Phone className="w-3 h-3 text-gray-400" />
+                        <span>{phone}</span>
+                      </div>)}
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    共 {selectedActivity.customerNumbers.length} 个客户号码
+                  </div>
+                </div>
+              </div>}
+
             {/* 活动标签 */}
             {selectedActivity?.tags && selectedActivity.tags.length > 0 && <div>
                 <h3 className="text-lg font-semibold mb-3 flex items-center">
                   <Tag className="w-4 h-4 mr-2" />
                   活动标签
                 </h3>
-                
-
-
-
-
+                <div className="flex flex-wrap gap-2">
+                  {selectedActivity.tags.map((tag, index) => <Badge key={index} variant="outline">
+                      {tag}
+                    </Badge>)}
+                </div>
               </div>}
 
             {/* 轮播图 */}
