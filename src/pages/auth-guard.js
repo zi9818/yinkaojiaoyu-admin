@@ -26,6 +26,22 @@ function shouldForceLogin() {
   }
 }
 
+function isAnonymousLoginState(loginState) {
+  const u = loginState?.user;
+  const loginType = loginState?.loginType || loginState?.login_type || loginState?.type || null;
+  const provider = u?.provider || u?.providerId || u?.provider_id || null;
+  const uid = u?.uid || u?.userId || u?.id || u?._id || u?.uuid || null;
+  return Boolean(
+    u?.isAnonymous ||
+      u?.anonymous ||
+      u?.is_anonymous ||
+      loginType === 'ANONYMOUS' ||
+      loginType === 'anonymous' ||
+      provider === 'anonymous' ||
+      (typeof uid === 'string' && uid.startsWith('d-'))
+  );
+}
+
 function getUidFromLoginState(loginState) {
   const u = loginState?.user;
   if (!u) return null;
@@ -81,6 +97,26 @@ export async function ensureAdminAccess($w) {
     loginState = null;
   }
 
+  if (loginState && isAnonymousLoginState(loginState)) {
+    loginState = null;
+  }
+
+  const uid = getUidFromLoginState(loginState);
+  if (loginState && !uid) {
+    loginState = null;
+  }
+
+  if (loginState && auth?.getAccessToken) {
+    try {
+      const res = await auth.getAccessToken();
+      if (!res?.accessToken) {
+        loginState = null;
+      }
+    } catch (e) {
+      loginState = null;
+    }
+  }
+
   if (!loginState) {
     if (!auth?.toDefaultLoginPage) {
       throw new Error('当前环境不支持托管登录页跳转，请确认 CloudBase SDK 版本');
@@ -104,11 +140,14 @@ export async function ensureAdminAccess($w) {
     };
   }
 
-  const uid = getUidFromLoginState(loginState);
   return {
     status: 'ok',
     tcb,
     auth,
     uid: uid || null
   };
+}
+
+export default function AuthGuardPage() {
+  return null;
 }
