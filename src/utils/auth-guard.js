@@ -4,16 +4,27 @@ export const ADMIN_ALLOWLIST_COLLECTION = 'admin_allowlist';
 const __AUTH_GLOBAL_KEY = '__yinkaojiaoyu_admin_cloudbase_auth__';
 const __FORCE_LOGIN_STORAGE_KEY = '__yinkaojiaoyu_admin_force_login__';
 const __LOGIN_SESSION_STORAGE_KEY = '__yinkaojiaoyu_admin_login_session__';
+const __POST_LOGIN_TO_ADMIN_STORAGE_KEY = '__yinkaojiaoyu_admin_post_login_to_admin__';
 
 export function getAuthSingleton(tcb) {
   if (!tcb) return null;
-  const g = typeof globalThis !== 'undefined' ? globalThis : null;
-  if (g && g[__AUTH_GLOBAL_KEY]) {
-    return g[__AUTH_GLOBAL_KEY];
-  }
+  try {
+    const cached = tcb?.[__AUTH_GLOBAL_KEY];
+    if (cached) return cached;
+  } catch (e) {}
   const auth = tcb?.auth?.();
-  if (g && auth) {
-    g[__AUTH_GLOBAL_KEY] = auth;
+  if (auth) {
+    try {
+      Object.defineProperty(tcb, __AUTH_GLOBAL_KEY, {
+        value: auth,
+        writable: false,
+        configurable: false
+      });
+    } catch (e) {
+      try {
+        tcb[__AUTH_GLOBAL_KEY] = auth;
+      } catch (e2) {}
+    }
   }
   return auth;
 }
@@ -146,6 +157,12 @@ export async function ensureAdminAccess($w) {
       throw new Error('当前环境不支持托管登录页跳转，请确认 CloudBase SDK 版本');
     }
 
+    try {
+      if (typeof window !== 'undefined' && window?.sessionStorage?.setItem) {
+        window.sessionStorage.setItem(__POST_LOGIN_TO_ADMIN_STORAGE_KEY, '1');
+      }
+    } catch (e) {}
+
     let redirectUri = '';
     if (typeof window !== 'undefined') {
       try {
@@ -160,7 +177,7 @@ export async function ensureAdminAccess($w) {
         } else {
           const parts = (u.pathname || '').split('/').filter(Boolean);
           if (parts[0] && parts[0].startsWith('app-')) {
-            u.pathname = `/${parts[0]}/admin`;
+            u.pathname = `/${parts[0]}/`;
             u.search = '';
             u.hash = '';
             redirectUri = u.toString();
@@ -190,6 +207,28 @@ export async function ensureAdminAccess($w) {
       uid: null
     };
   }
+
+  try {
+    if (typeof window !== 'undefined' && window?.sessionStorage?.getItem?.(__POST_LOGIN_TO_ADMIN_STORAGE_KEY) === '1') {
+      try {
+        window.sessionStorage.removeItem(__POST_LOGIN_TO_ADMIN_STORAGE_KEY);
+      } catch (e) {}
+      if ($w?.utils?.navigateTo) {
+        $w.utils.navigateTo({
+          pageId: 'admin',
+          params: {
+            _t: String(Date.now())
+          }
+        });
+        return {
+          status: 'redirected',
+          tcb,
+          auth,
+          uid: uid || null
+        };
+      }
+    }
+  } catch (e) {}
 
   return {
     status: 'ok',
