@@ -3,6 +3,7 @@ export const ADMIN_ALLOWLIST_COLLECTION = 'admin_allowlist';
 
 const __AUTH_GLOBAL_KEY = '__yinkaojiaoyu_admin_cloudbase_auth__';
 const __FORCE_LOGIN_STORAGE_KEY = '__yinkaojiaoyu_admin_force_login__';
+const __LOGIN_SESSION_STORAGE_KEY = '__yinkaojiaoyu_admin_login_session__';
 
 export function getAuthSingleton(tcb) {
   if (!tcb) return null;
@@ -24,6 +25,14 @@ function shouldForceLogin() {
     if (sp.get('forceLogin') === '1') {
       return true;
     }
+    try {
+      if (window?.sessionStorage?.getItem?.(__LOGIN_SESSION_STORAGE_KEY) !== '1') {
+        try {
+          window.sessionStorage.setItem(__LOGIN_SESSION_STORAGE_KEY, '1');
+        } catch (e) {}
+        return true;
+      }
+    } catch (e) {}
     if (window?.sessionStorage?.getItem?.(__FORCE_LOGIN_STORAGE_KEY) === '1') {
       try {
         window.sessionStorage.removeItem(__FORCE_LOGIN_STORAGE_KEY);
