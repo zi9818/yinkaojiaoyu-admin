@@ -267,6 +267,7 @@ export default function OrderManagement(props) {
       if (typeof window === 'undefined' || !window?.sessionStorage?.getItem) return;
       const raw = window.sessionStorage.getItem(NAV_TARGET_KEY);
       if (!raw) return;
+
       let target = null;
       try {
         target = JSON.parse(raw);
@@ -281,12 +282,27 @@ export default function OrderManagement(props) {
       const tcb = await $w.cloud.getCloudInstance();
       const db = tcb.database();
       let order = null;
+
       try {
         const res = await db.collection('orders').doc(target.orderId).get();
-        order = res?.data || null;
+        const data = res?.data;
+        order = Array.isArray(data) ? (data[0] || null) : (data || null);
       } catch (e) {
         order = null;
       }
+
+      if (!order) {
+        try {
+          const res2 = await db.collection('orders').where({
+            _id: target.orderId
+          }).limit(1).get();
+          const data2 = res2?.data;
+          order = Array.isArray(data2) ? (data2[0] || null) : (data2 || null);
+        } catch (e) {
+          order = null;
+        }
+      }
+
       if (!order) return;
       setSelectedOrder(order);
       setIsDetailDialogOpen(true);
@@ -346,6 +362,7 @@ export default function OrderManagement(props) {
           query = query.orderBy('createdAt', 'desc');
         }
       } catch (e) {}
+
       const offset = (nextPage - 1) * nextPageSize;
       try {
         if (query?.skip) {
