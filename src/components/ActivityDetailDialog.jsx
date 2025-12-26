@@ -1,9 +1,47 @@
 // @ts-ignore;
 import React from 'react';
 // @ts-ignore;
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, Button, Badge } from '@/components/ui';
+import { Button, Badge } from '@/components/ui';
 // @ts-ignore;
 import { MapPin, Calendar, Users, Clock, Eye, Image as ImageIcon, Tag, DollarSign, Phone } from 'lucide-react';
+
+function InlineModal({
+  open,
+  onOpenChange,
+  className,
+  children
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={() => {
+          if (onOpenChange) onOpenChange(false);
+        }}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={`relative z-10 w-full mx-4 bg-white rounded-lg shadow-lg ${className || ''}`}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+      >
+        <button
+          type="button"
+          className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
+          onClick={() => {
+            if (onOpenChange) onOpenChange(false);
+          }}
+        >
+          ×
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export function ActivityDetailDialog({
   open,
@@ -17,11 +55,9 @@ export function ActivityDetailDialog({
   formatPrice
 }) {
   if (!activity) return null;
-  return <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">{activity.title}</DialogTitle>
-        </DialogHeader>
+  return <InlineModal open={open} onOpenChange={onOpenChange} className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="p-6">
+        <div className="text-2xl font-bold">{activity.title}</div>
 
         <div className="space-y-6">
           {/* 基本信息 */}
@@ -139,23 +175,23 @@ export function ActivityDetailDialog({
             </div>}
         </div>
 
-        <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <Button variant="outline" size="lg" onClick={() => onOpenChange(false)}>
             关闭
           </Button>
-          <Button onClick={() => {
+          <Button size="lg" onClick={() => {
           onEdit(activity);
           onOpenChange(false);
         }}>
             编辑
           </Button>
-          <Button variant={activity.isActive ? "destructive" : "default"} onClick={() => {
+          <Button variant={activity.isActive ? "destructive" : "default"} size="lg" onClick={() => {
           onTogglePublish(activity);
           onOpenChange(false);
         }}>
             {activity.isActive ? '下架' : '发布'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>;
+        </div>
+      </div>
+    </InlineModal>;
 }

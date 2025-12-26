@@ -1,10 +1,48 @@
 // @ts-ignore;
 import React, { useState, useEffect } from 'react';
 // @ts-ignore;
-import { Card, CardContent, CardHeader, CardTitle, Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Input, Badge, Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge } from '@/components/ui';
 // @ts-ignore;
 import { Search, Filter, ArrowLeft, Eye, Edit, Trash2, Calendar, DollarSign, User, Phone, Mail, MapPin, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, Download, FileText } from 'lucide-react';
 import { ensureAdminAccess, getAuthSingleton } from './auth-guard';
+
+function InlineModal({
+  open,
+  onOpenChange,
+  className,
+  children
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={() => {
+          if (onOpenChange) onOpenChange(false);
+        }}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={`relative z-10 w-full mx-4 bg-white rounded-lg shadow-lg ${className || ''}`}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+      >
+        <button
+          type="button"
+          className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
+          onClick={() => {
+            if (onOpenChange) onOpenChange(false);
+          }}
+        >
+          ×
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default function OrderManagement(props) {
   const {
@@ -225,7 +263,14 @@ export default function OrderManagement(props) {
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      try {
+        if (link.parentNode) {
+          link.parentNode.removeChild(link);
+        }
+      } catch (e) {}
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {}
     } catch (error) {
       console.error('导出订单失败:', error);
     } finally {
@@ -312,14 +357,15 @@ export default function OrderManagement(props) {
             </div>
           </div>
           <div className="flex gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48 bg-white/80 border-blue-100 focus:ring-blue-200">
-                <SelectValue placeholder="筛选状态" />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <select
+              className="w-48 h-10 px-3 rounded-md border border-blue-100 bg-white/80"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              {statusOptions.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
             <Button onClick={exportOrders} disabled={isExporting} className="flex items-center space-x-2 bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-70">
               {isExporting ? <><RefreshCw className="w-4 h-4 animate-spin" />导出中...</> : <><Download className="w-4 h-4" />导出</>}
             </Button>
@@ -384,88 +430,83 @@ export default function OrderManagement(props) {
           </div>
         </div>
 
-        {/* 订单详情对话框 */}
-        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>订单详情</DialogTitle>
-            </DialogHeader>
-            {selectedOrder && <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">订单状态</label>
-                    <div className="mt-1">
-                      <Badge className={getStatusColor(selectedOrder.status)}>
-                        {getStatusText(selectedOrder.status)}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">总金额</label>
-                    <p className="mt-1 text-sm text-gray-900">{formatAmount(selectedOrder.amount)}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">用户姓名</label>
-                    <p className="mt-1 text-sm text-gray-900">{selectedOrder.userName}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">用户手机</label>
-                    <p className="mt-1 text-sm text-gray-900">{selectedOrder.userPhone}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">活动标题</label>
-                    <p className="mt-1 text-sm text-gray-900">{selectedOrder.activityTitle}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">创建时间</label>
-                    <p className="mt-1 text-sm text-gray-900">{formatDate(selectedOrder.createdAt)}</p>
+        {/* 订单详情弹窗 */}
+        <InlineModal open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen} className="max-w-2xl">
+          <div className="p-6">
+            <div className="text-lg font-semibold">订单详情</div>
+            {selectedOrder && <div className="space-y-6 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">订单状态</label>
+                  <div className="mt-1">
+                    <Badge className={getStatusColor(selectedOrder.status)}>
+                      {getStatusText(selectedOrder.status)}
+                    </Badge>
                   </div>
                 </div>
-              </div>}
-          </DialogContent>
-        </Dialog>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">总金额</label>
+                  <p className="mt-1 text-sm text-gray-900">{formatAmount(selectedOrder.amount)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">用户姓名</label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedOrder.userName}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">用户手机</label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedOrder.userPhone}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">活动标题</label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedOrder.activityTitle}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">创建时间</label>
+                  <p className="mt-1 text-sm text-gray-900">{formatDate(selectedOrder.createdAt)}</p>
+                </div>
+              </div>
+            </div>}
+          </div>
+        </InlineModal>
 
-        {/* 编辑订单对话框 */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>编辑订单</DialogTitle>
-            </DialogHeader>
-            {selectedOrder && <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">订单状态</label>
-                  <Select value={editForm.status} onValueChange={value => setEditForm({
-                ...editForm,
-                status: value
-              })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="REGISTERED">已报名</SelectItem>
-                      <SelectItem value="PAID">已支付</SelectItem>
-                      <SelectItem value="CANCELLED">已取消</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">总金额（元）</label>
-                  <Input type="number" step="0.01" value={editForm.amount} onChange={e => setEditForm({
-                ...editForm,
-                amount: e.target.value
-              })} />
-                </div>
-                <div className="flex justify-end space-x-2 pt-4">
-                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                    取消
-                  </Button>
-                  <Button onClick={saveEdit}>
-                    保存
-                  </Button>
-                </div>
-              </div>}
-          </DialogContent>
-        </Dialog>
+        {/* 编辑订单弹窗 */}
+        <InlineModal open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} className="max-w-md">
+          <div className="p-6">
+            <div className="text-lg font-semibold">编辑订单</div>
+            {selectedOrder && <div className="space-y-4 mt-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">订单状态</label>
+                <select
+                  className="w-full h-10 px-3 rounded-md border border-gray-200 bg-white"
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({
+                    ...editForm,
+                    status: e.target.value
+                  })}
+                >
+                  <option value="REGISTERED">已报名</option>
+                  <option value="PAID">已支付</option>
+                  <option value="CANCELLED">已取消</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">金额（元）</label>
+                <Input type="number" value={editForm.amount} onChange={e => setEditForm({
+                  ...editForm,
+                  amount: e.target.value
+                })} step="0.01" min="0" />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  取消
+                </Button>
+                <Button onClick={saveEdit}>
+                  保存
+                </Button>
+              </div>
+            </div>}
+          </div>
+        </InlineModal>
       </div>
     </div>;
 }

@@ -6,14 +6,37 @@ const __FORCE_LOGIN_STORAGE_KEY = '__yinkaojiaoyu_admin_force_login__';
 const __LOGIN_SESSION_STORAGE_KEY = '__yinkaojiaoyu_admin_login_session__';
 const __POST_LOGIN_TO_ADMIN_STORAGE_KEY = '__yinkaojiaoyu_admin_post_login_to_admin__';
 
+const __AUTH_SINGLETON_WM = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+
 export function getAuthSingleton(tcb) {
   if (!tcb) return null;
+  try {
+    const cachedFromGlobal = globalThis?.[__AUTH_GLOBAL_KEY];
+    if (cachedFromGlobal) {
+      try {
+        __AUTH_SINGLETON_WM?.set?.(tcb, cachedFromGlobal);
+      } catch (e) {}
+      return cachedFromGlobal;
+    }
+  } catch (e) {}
+  try {
+    const cachedFromWm = __AUTH_SINGLETON_WM?.get?.(tcb);
+    if (cachedFromWm) return cachedFromWm;
+  } catch (e) {}
   try {
     const cached = tcb?.[__AUTH_GLOBAL_KEY];
     if (cached) return cached;
   } catch (e) {}
   const auth = tcb?.auth?.();
   if (auth) {
+    try {
+      __AUTH_SINGLETON_WM?.set?.(tcb, auth);
+    } catch (e) {}
+    try {
+      if (!globalThis?.[__AUTH_GLOBAL_KEY]) {
+        globalThis[__AUTH_GLOBAL_KEY] = auth;
+      }
+    } catch (e) {}
     try {
       Object.defineProperty(tcb, __AUTH_GLOBAL_KEY, {
         value: auth,

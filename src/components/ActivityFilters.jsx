@@ -1,7 +1,7 @@
 // @ts-ignore;
 import React from 'react';
 // @ts-ignore;
-import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button } from '@/components/ui';
+import { Input, Button } from '@/components/ui';
 // @ts-ignore;
 import { Search, Filter, Plus, ArrowLeft } from 'lucide-react';
 
@@ -30,17 +30,20 @@ export function ActivityFilters({
 
       {/* 筛选器 */}
       <div className="flex gap-2">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="发布状态" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部状态</SelectItem>
-            <SelectItem value="published">已发布</SelectItem>
-            <SelectItem value="draft">未发布</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="relative w-40">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+            <Filter className="w-4 h-4" />
+          </div>
+          <select
+            className="w-full h-10 pl-9 pr-3 rounded-md border border-gray-200 bg-white"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">全部状态</option>
+            <option value="published">已发布</option>
+            <option value="draft">未发布</option>
+          </select>
+        </div>
 
         <Button onClick={onCreateActivity} className="flex items-center">
           <Plus className="w-4 h-4 mr-2" />

@@ -1,7 +1,7 @@
 // @ts-ignore;
 import React, { useState, useEffect } from 'react';
 // @ts-ignore;
-import { Card, CardContent, CardHeader, CardTitle, Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Checkbox, Label } from '@/components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Checkbox, Label } from '@/components/ui';
 // @ts-ignore;
 import { Download, FileText, Users, Activity, Database, ArrowLeft, Calendar, CheckCircle, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import { ensureAdminAccess, getAuthSingleton } from './auth-guard';
@@ -336,7 +336,14 @@ export default function DataExport(props) {
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      try {
+        if (link.parentNode) {
+          link.parentNode.removeChild(link);
+        }
+      } catch (e) {}
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {}
       setExportProgress(100);
       setExportStatus('completed');
       setExportResult({
@@ -535,16 +542,15 @@ export default function DataExport(props) {
                   <FileText className="w-4 h-4 mr-2" />
                   导出类型
                 </Label>
-                <Select value={exportType} onValueChange={setExportType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择导出类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="activities">活动数据</SelectItem>
-                    <SelectItem value="orders">订单数据</SelectItem>
-                    <SelectItem value="users">用户数据</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select
+                  className="w-full h-10 px-3 rounded-md border border-gray-200 bg-white"
+                  value={exportType}
+                  onChange={(e) => setExportType(e.target.value)}
+                >
+                  <option value="activities">活动数据</option>
+                  <option value="orders">订单数据</option>
+                  <option value="users">用户数据</option>
+                </select>
               </div>
 
               {/* 时间范围 */}
@@ -553,14 +559,15 @@ export default function DataExport(props) {
                   <Calendar className="w-4 h-4 mr-2" />
                   时间范围
                 </Label>
-                <Select value={dateRange} onValueChange={setDateRange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择时间范围" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dateRangeOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <select
+                  className="w-full h-10 px-3 rounded-md border border-gray-200 bg-white"
+                  value={dateRange}
+                  onChange={(e) => setDateRange(e.target.value)}
+                >
+                  {dateRangeOptions.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
               </div>
 
               {/* 导出格式 */}
@@ -569,15 +576,14 @@ export default function DataExport(props) {
                   <Download className="w-4 h-4 mr-2" />
                   导出格式
                 </Label>
-                <Select value={format} onValueChange={setFormat}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择导出格式" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="csv">CSV（.csv）</SelectItem>
-                    <SelectItem value="excel">Excel（.xls）</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select
+                  className="w-full h-10 px-3 rounded-md border border-gray-200 bg-white"
+                  value={format}
+                  onChange={(e) => setFormat(e.target.value)}
+                >
+                  <option value="csv">CSV（.csv）</option>
+                  <option value="excel">Excel（.xls）</option>
+                </select>
               </div>
             </div>
           </CardContent>

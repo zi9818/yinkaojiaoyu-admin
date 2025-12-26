@@ -1,7 +1,7 @@
 // @ts-ignore;
 import React, { useState, useRef } from 'react';
 // @ts-ignore;
-import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Badge } from '@/components/ui';
+import { Button, Input, Badge } from '@/components/ui';
 // @ts-ignore;
 import { X, Tag, Upload, Image as ImageIcon, Plus, GripVertical } from 'lucide-react';
 
