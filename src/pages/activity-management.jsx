@@ -19,6 +19,8 @@ export default function ActivityManagementPage(props) {
   const {
     $w
   } = props;
+  const NAV_TARGET_KEY = '__yinkaojiaoyu_admin_nav_target__';
+
   const {
     toast
   } = useToast();
@@ -283,6 +285,41 @@ export default function ActivityManagementPage(props) {
     if (!authChecked || forbidden) return;
     loadActivities(1, true);
   }, [searchTerm, statusFilter, authChecked, forbidden]);
+
+  const consumeNavTarget = async () => {
+    try {
+      if (typeof window === 'undefined' || !window?.sessionStorage?.getItem) return;
+      const raw = window.sessionStorage.getItem(NAV_TARGET_KEY);
+      if (!raw) return;
+      let target = null;
+      try {
+        target = JSON.parse(raw);
+      } catch (e) {
+        target = null;
+      }
+      if (!target || target.type !== 'activity' || !target.activityId) return;
+      try {
+        window.sessionStorage.removeItem(NAV_TARGET_KEY);
+      } catch (e) {}
+
+      setSearchTerm('');
+      setStatusFilter('all');
+      setPagination(prev => ({
+        ...prev,
+        current: 1
+      }));
+
+      await openEditDialog({
+        _id: target.activityId
+      });
+    } catch (e) {}
+  };
+
+  // admin 跳转定位：自动打开对应活动编辑
+  useEffect(() => {
+    if (!authChecked || forbidden) return;
+    consumeNavTarget();
+  }, [authChecked, forbidden]);
 
   // 检查是否已有发布的活动 - 使用isActive字段
   const checkHasPublishedActivity = () => {

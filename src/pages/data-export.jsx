@@ -22,6 +22,11 @@ export default function DataExport(props) {
   const [previewError, setPreviewError] = useState('');
   const [previewData, setPreviewData] = useState([]);
   const [previewPage, setPreviewPage] = useState(1);
+  const [previewPageSize, setPreviewPageSize] = useState(20);
+  const [previewTotal, setPreviewTotal] = useState(0);
+  const [previewTotalKnown, setPreviewTotalKnown] = useState(true);
+  const [previewHasMore, setPreviewHasMore] = useState(false);
+  const [previewPageInput, setPreviewPageInput] = useState('');
   const [previewLastUpdatedAt, setPreviewLastUpdatedAt] = useState(0);
   const [authChecked, setAuthChecked] = useState(false);
   const [forbidden, setForbidden] = useState(false);
@@ -147,7 +152,7 @@ export default function DataExport(props) {
 
   useEffect(() => {
     setPreviewPage(1);
-  }, [exportType, dateRange, selectedFields.length]);
+  }, [exportType, dateRange, selectedFields.length, previewPageSize]);
 
   const formatDisplayValue = (field, rawValue) => {
     let value = rawValue;
@@ -181,7 +186,7 @@ export default function DataExport(props) {
     return String(value);
   };
 
-  const loadPreviewData = async () => {
+  const loadPreviewData = async (pageOverride, pageSizeOverride) => {
     if (!authChecked || forbidden) {
       setPreviewData([]);
       setPreviewError('');
@@ -192,11 +197,16 @@ export default function DataExport(props) {
       setPreviewError('');
       return;
     }
+
+    const page = typeof pageOverride === 'number' && pageOverride > 0 ? pageOverride : previewPage;
+    const pageSize = typeof pageSizeOverride === 'number' && pageSizeOverride > 0 ? pageSizeOverride : previewPageSize;
+
     setPreviewLoading(true);
     setPreviewError('');
     try {
       const tcb = await $w.cloud.getCloudInstance();
       const db = tcb.database();
+      const cmd = db.command;
 
       let collectionName = '';
       if (exportType === 'activities') {
@@ -207,18 +217,70 @@ export default function DataExport(props) {
         collectionName = 'users';
       }
 
+      const range = getDateRange();
+      let whereObj = null;
+      if (range && cmd?.gte && cmd?.lte) {
+        const { startDate, endDate } = range;
+        const startTs = startDate.getTime();
+        const endTs = endDate.getTime();
+        try {
+          whereObj = {
+            createdAt: cmd.gte(startTs).and(cmd.lte(endTs))
+          };
+        } catch (e) {
+          whereObj = null;
+        }
+      }
+
+      let totalKnown = true;
+      let total = 0;
+      try {
+        let countQuery = db.collection(collectionName);
+        try {
+          if (whereObj && countQuery?.where) {
+            countQuery = countQuery.where(whereObj);
+          }
+        } catch (e) {}
+        if (countQuery?.count) {
+          const countRes = await countQuery.count();
+          total = typeof countRes?.total === 'number' ? countRes.total : 0;
+        } else {
+          totalKnown = false;
+        }
+      } catch (e) {
+        totalKnown = false;
+        total = 0;
+      }
+
       let query = db.collection(collectionName);
       try {
-        if (query?.orderBy && query?.limit) {
-          query = query.orderBy('createdAt', 'desc').limit(200);
+        if (query?.orderBy) {
+          query = query.orderBy('createdAt', 'desc');
+        }
+      } catch (e) {}
+
+      try {
+        if (whereObj && query?.where) {
+          query = query.where(whereObj);
+        }
+      } catch (e) {}
+
+      const offset = (page - 1) * pageSize;
+      try {
+        if (query?.skip) {
+          query = query.skip(offset);
+        }
+      } catch (e) {}
+      try {
+        if (query?.limit) {
+          query = query.limit(pageSize);
         }
       } catch (e) {}
 
       const result = await query.get();
       let data = result.data || [];
 
-      const range = getDateRange();
-      if (range) {
+      if (range && !whereObj) {
         const { startDate, endDate } = range;
         data = data.filter(item => {
           const value = item.createdAt;
@@ -229,18 +291,23 @@ export default function DataExport(props) {
           }
           return d >= startDate && d <= endDate;
         });
+        totalKnown = false;
+        total = 0;
       }
 
       if (exportType === 'orders' && hasActivityFields()) {
         const activityIds = [...new Set(data.map(order => order.activityId).filter(Boolean))];
         if (activityIds.length > 0) {
-          const activitiesResult = await db.collection('activities')
-            .where({ _id: db.command.in(activityIds) })
-            .get();
           const activitiesMap = {};
-          (activitiesResult.data || []).forEach(activity => {
-            activitiesMap[activity._id] = activity;
-          });
+          for (let i = 0; i < activityIds.length; i += 100) {
+            const chunk = activityIds.slice(i, i + 100);
+            const activitiesResult = await db.collection('activities')
+              .where({ _id: db.command.in(chunk) })
+              .get();
+            (activitiesResult.data || []).forEach(activity => {
+              activitiesMap[activity._id] = activity;
+            });
+          }
           const activityFieldMapping = getActivityFieldMapping();
           data = data.map(order => {
             const activity = activitiesMap[order.activityId] || {};
@@ -262,10 +329,16 @@ export default function DataExport(props) {
       });
 
       setPreviewData(filteredData);
+      setPreviewTotal(total);
+      setPreviewTotalKnown(totalKnown);
+      setPreviewHasMore(totalKnown ? page * pageSize < total : (result.data || []).length === pageSize);
       setPreviewLastUpdatedAt(Date.now());
     } catch (e) {
       setPreviewError(e?.message || '加载预览失败');
       setPreviewData([]);
+      setPreviewTotal(0);
+      setPreviewTotalKnown(true);
+      setPreviewHasMore(false);
     } finally {
       setPreviewLoading(false);
     }
@@ -275,13 +348,13 @@ export default function DataExport(props) {
     let cancelled = false;
     const timer = setTimeout(() => {
       if (cancelled) return;
-      loadPreviewData();
+      loadPreviewData(previewPage, previewPageSize);
     }, 250);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [authChecked, forbidden, exportType, dateRange, selectedFields.join('|')]);
+  }, [authChecked, forbidden, exportType, dateRange, selectedFields.join('|'), previewPage, previewPageSize]);
 
   // 计算当前选择的时间范围（统一按 createdAt 时间筛选）
   const getDateRange = () => {
@@ -361,10 +434,9 @@ export default function DataExport(props) {
     return selectedFields.some(fieldId => fieldId.startsWith('activity_'));
   };
 
-  const previewPageSize = 20;
-  const previewTotalPages = Math.max(1, Math.ceil((previewData || []).length / previewPageSize));
-  const safePreviewPage = Math.min(Math.max(previewPage, 1), previewTotalPages);
-  const previewPageData = (previewData || []).slice((safePreviewPage - 1) * previewPageSize, safePreviewPage * previewPageSize);
+  const previewTotalPages = previewTotalKnown ? Math.max(1, Math.ceil((previewTotal || 0) / previewPageSize)) : 0;
+  const safePreviewPage = previewTotalKnown ? Math.min(Math.max(previewPage, 1), previewTotalPages) : Math.max(1, previewPage);
+  const previewPageData = previewData || [];
 
   // 获取选中的活动字段映射
   const getActivityFieldMapping = () => {
@@ -405,22 +477,70 @@ export default function DataExport(props) {
       setExportProgress(30);
 
       // 查询主数据（不带时间条件，避免类型不兼容），统一在前端按 createdAt 过滤
-      const result = await db.collection(collectionName).get();
-      let data = result.data || [];
-
-      // 前端按 createdAt 做时间范围过滤
+      const cmd = db.command;
       const range = getDateRange();
-      if (range) {
+      let whereObj = null;
+      if (range && cmd?.gte && cmd?.lte) {
         const { startDate, endDate } = range;
-        data = data.filter(item => {
-          const value = item.createdAt;
-          if (!value) return false;
-          const d = new Date(value);
-          if (isNaN(d.getTime())) {
-            return false;
+        const startTs = startDate.getTime();
+        const endTs = endDate.getTime();
+        try {
+          whereObj = {
+            createdAt: cmd.gte(startTs).and(cmd.lte(endTs))
+          };
+        } catch (e) {
+          whereObj = null;
+        }
+      }
+
+      const batchSize = 500;
+      let data = [];
+      let offset = 0;
+      let safety = 0;
+      while (safety < 2000) {
+        safety += 1;
+        let q = db.collection(collectionName);
+        try {
+          if (whereObj && q?.where) {
+            q = q.where(whereObj);
           }
-          return d >= startDate && d <= endDate;
-        });
+        } catch (e) {}
+        try {
+          if (q?.orderBy) {
+            q = q.orderBy('createdAt', 'desc');
+          }
+        } catch (e) {}
+        try {
+          if (q?.skip) {
+            q = q.skip(offset);
+          }
+        } catch (e) {}
+        try {
+          if (q?.limit) {
+            q = q.limit(batchSize);
+          }
+        } catch (e) {}
+
+        const res = await q.get();
+        const part = res.data || [];
+        if (range && !whereObj) {
+          const { startDate, endDate } = range;
+          data.push(...part.filter(item => {
+            const value = item.createdAt;
+            if (!value) return false;
+            const d = new Date(value);
+            if (isNaN(d.getTime())) {
+              return false;
+            }
+            return d >= startDate && d <= endDate;
+          }));
+        } else {
+          data.push(...part);
+        }
+        if (part.length < batchSize) {
+          break;
+        }
+        offset += batchSize;
       }
       setExportProgress(50);
 
@@ -430,13 +550,16 @@ export default function DataExport(props) {
 
         if (activityIds.length > 0) {
           // 批量查询活动数据
-          const activitiesResult = await db.collection('activities')
-            .where({ _id: db.command.in(activityIds) })
-            .get();
           const activitiesMap = {};
-          (activitiesResult.data || []).forEach(activity => {
-            activitiesMap[activity._id] = activity;
-          });
+          for (let i = 0; i < activityIds.length; i += 100) {
+            const chunk = activityIds.slice(i, i + 100);
+            const activitiesResult = await db.collection('activities')
+              .where({ _id: db.command.in(chunk) })
+              .get();
+            (activitiesResult.data || []).forEach(activity => {
+              activitiesMap[activity._id] = activity;
+            });
+          }
 
           // 关联活动数据到订单
           const activityFieldMapping = getActivityFieldMapping();
@@ -855,7 +978,7 @@ export default function DataExport(props) {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      loadPreviewData();
+                      loadPreviewData(previewPage, previewPageSize);
                     }}
                     disabled={previewLoading || !authChecked || forbidden || selectedFields.length === 0}
                     className="bg-white/70"
@@ -875,7 +998,7 @@ export default function DataExport(props) {
             <CardContent>
               <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
                 <div>
-                  共 {previewData.length} 条（预览仅展示前 200 条内的结果）
+                  共 {previewTotalKnown ? previewTotal : '未知'} 条
                 </div>
                 <div>
                   {previewLastUpdatedAt ? `更新于：${new Date(previewLastUpdatedAt).toLocaleString('zh-CN')}` : ''}
@@ -939,9 +1062,31 @@ export default function DataExport(props) {
               {selectedFields.length > 0 ? (
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-gray-600">
-                    第 {safePreviewPage} / {previewTotalPages} 页
+                    {previewTotalKnown ? `第 ${safePreviewPage} / ${previewTotalPages} 页` : `第 ${safePreviewPage} 页`}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">每页</span>
+                      <select
+                        className="border rounded px-2 py-1 text-sm bg-white"
+                        value={String(previewPageSize)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const next = Number(value);
+                          if (Number.isFinite(next) && next > 0) {
+                            setPreviewPageSize(next);
+                          }
+                        }}
+                        disabled={previewLoading}
+                      >
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                      </select>
+                      <span className="text-sm text-gray-600">条</span>
+                    </div>
+
                     <Button
                       variant="outline"
                       disabled={safePreviewPage <= 1}
@@ -951,11 +1096,50 @@ export default function DataExport(props) {
                     </Button>
                     <Button
                       variant="outline"
-                      disabled={safePreviewPage >= previewTotalPages}
-                      onClick={() => setPreviewPage((p) => Math.min(previewTotalPages, p + 1))}
+                      disabled={previewTotalKnown ? safePreviewPage >= previewTotalPages : !previewHasMore}
+                      onClick={() => {
+                        if (previewTotalKnown) {
+                          setPreviewPage((p) => Math.min(previewTotalPages, p + 1));
+                        } else {
+                          setPreviewPage((p) => p + 1);
+                        }
+                      }}
                     >
                       下一页
                     </Button>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="border rounded px-2 py-1 text-sm w-24"
+                        type="number"
+                        min={1}
+                        placeholder="跳转页"
+                        value={previewPageInput}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setPreviewPageInput(value);
+                        }}
+                        disabled={previewLoading}
+                      />
+                      <Button
+                        variant="outline"
+                        disabled={previewLoading || (previewTotalKnown && previewTotalPages <= 1 && safePreviewPage === 1)}
+                        onClick={() => {
+                          const raw = String(previewPageInput || '').trim();
+                          const next = Number(raw);
+                          if (!Number.isFinite(next) || next < 1) {
+                            return;
+                          }
+                          if (previewTotalKnown) {
+                            setPreviewPage(Math.min(previewTotalPages, Math.max(1, next)));
+                          } else {
+                            setPreviewPage(Math.max(1, next));
+                          }
+                        }}
+                      >
+                        跳转
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : null}

@@ -11,6 +11,8 @@ export default function AdminDashboard(props) {
     $w
   } = props;
 
+  const NAV_TARGET_KEY = '__yinkaojiaoyu_admin_nav_target__';
+
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalOrders: 0,
@@ -60,16 +62,60 @@ export default function AdminDashboard(props) {
     try {
       const tcb = await $w.cloud.getCloudInstance();
       const db = tcb.database();
+      const cmd = db.command;
 
       // 获取用户总数
       const usersResult = await db.collection('users').count();
       const totalUsers = usersResult.total;
 
-      // 获取订单总数和总收入
-      const ordersResult = await db.collection('orders').get();
-      const orders = ordersResult.data || [];
-      const totalOrders = orders.length;
-      const totalRevenue = orders.reduce((sum, order) => sum + (order.amount || 0), 0) / 100;
+      // 获取订单总数
+      let totalOrders = 0;
+      try {
+        const ordersCount = await db.collection('orders').count();
+        totalOrders = typeof ordersCount?.total === 'number' ? ordersCount.total : 0;
+      } catch (e) {
+        totalOrders = 0;
+      }
+
+      // 总收入：只统计已支付订单（PAID）
+      let paidAmountFen = 0;
+      try {
+        const paidWhere = {
+          status: cmd.eq('PAID')
+        };
+        const batchSize = 500;
+        let offset = 0;
+        let safety = 0;
+        while (safety < 2000) {
+          safety += 1;
+          let q = db.collection('orders');
+          try {
+            if (q?.where) {
+              q = q.where(paidWhere);
+            }
+          } catch (e) {}
+          try {
+            if (q?.skip) {
+              q = q.skip(offset);
+            }
+          } catch (e) {}
+          try {
+            if (q?.limit) {
+              q = q.limit(batchSize);
+            }
+          } catch (e) {}
+          const res = await q.get();
+          const rows = res?.data || [];
+          paidAmountFen += rows.reduce((sum, order) => sum + (order?.amount || 0), 0);
+          if (rows.length < batchSize) {
+            break;
+          }
+          offset += batchSize;
+        }
+      } catch (e) {
+        paidAmountFen = 0;
+      }
+      const totalRevenue = paidAmountFen / 100;
 
       // 获取活动总数
       const activitiesResult = await db.collection('activities').count();
@@ -216,6 +262,7 @@ export default function AdminDashboard(props) {
               <p className="text-xs text-muted-foreground">注册用户总数</p>
             </CardContent>
           </Card>
+
           <Card className="bg-emerald-50 border border-emerald-100 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">总订单数</CardTitle>
@@ -226,6 +273,7 @@ export default function AdminDashboard(props) {
               <p className="text-xs text-muted-foreground">所有订单总数</p>
             </CardContent>
           </Card>
+
           <Card className="bg-indigo-50 border border-indigo-100 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">总活动数</CardTitle>
@@ -236,6 +284,7 @@ export default function AdminDashboard(props) {
               <p className="text-xs text-muted-foreground">发布活动总数</p>
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">总收入</CardTitle>
@@ -243,7 +292,7 @@ export default function AdminDashboard(props) {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatAmount(stats.totalRevenue)}</div>
-              <p className="text-xs text-muted-foreground">所有订单收入</p>
+              <p className="text-xs text-muted-foreground">已支付订单收入</p>
             </CardContent>
           </Card>
         </div>
@@ -337,7 +386,20 @@ export default function AdminDashboard(props) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentActivities.length === 0 ? <p className="text-gray-500 text-center py-4">暂无活动</p> : recentActivities.map(activity => <div key={activity._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                {recentActivities.length === 0 ? <p className="text-gray-500 text-center py-4">暂无活动</p> : recentActivities.map(activity => <div key={activity._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100" onClick={() => {
+                try {
+                  if (typeof window !== 'undefined' && window?.sessionStorage?.setItem) {
+                    window.sessionStorage.setItem(NAV_TARGET_KEY, JSON.stringify({
+                      type: 'activity',
+                      activityId: activity._id
+                    }));
+                  }
+                } catch (e) {}
+                $w.utils.navigateTo({
+                  pageId: 'activity-management',
+                  params: {}
+                });
+              }}>
                     <div className="flex-1">
                       <h4 className="font-medium text-gray-900">{activity.title}</h4>
                       <p className="text-sm text-gray-500">{formatDate(activity.startTime)}</p>
@@ -360,7 +422,20 @@ export default function AdminDashboard(props) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentOrders.length === 0 ? <p className="text-gray-500 text-center py-4">暂无订单</p> : recentOrders.map(order => <div key={order._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                {recentOrders.length === 0 ? <p className="text-gray-500 text-center py-4">暂无订单</p> : recentOrders.map(order => <div key={order._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100" onClick={() => {
+                try {
+                  if (typeof window !== 'undefined' && window?.sessionStorage?.setItem) {
+                    window.sessionStorage.setItem(NAV_TARGET_KEY, JSON.stringify({
+                      type: 'order',
+                      orderId: order._id
+                    }));
+                  }
+                } catch (e) {}
+                $w.utils.navigateTo({
+                  pageId: 'order-management',
+                  params: {}
+                });
+              }}>
                     <div className="flex-1">
                       <h4 className="font-medium text-gray-900">{order.activityTitle}</h4>
                       <p className="text-sm text-gray-500">{order.userName} - {formatAmount(order.amount / 100)}</p>
@@ -373,6 +448,7 @@ export default function AdminDashboard(props) {
             </CardContent>
           </Card>
         </div>
+
       </div>
     </div>;
 }
