@@ -288,32 +288,44 @@ export function ActivityForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">活动标题 *</label>
-            <Input value={formData.title} onChange={(e) => setFormData((prev) => ({
+            <Input value={formData.title} onChange={(e) => {
+            const value = e.target.value;
+            setFormData((prev) => ({
             ...prev,
-            title: e.target.value }))}
+            title: value }));
+          }}
           placeholder="请输入活动标题" />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">活动副标题</label>
-            <Input value={formData.subtitle} onChange={(e) => setFormData((prev) => ({
+            <Input value={formData.subtitle} onChange={(e) => {
+            const value = e.target.value;
+            setFormData((prev) => ({
             ...prev,
-            subtitle: e.target.value }))}
+            subtitle: value }));
+          }}
           placeholder="请输入副标题" />
           </div>
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">活动描述</label>
-          <textarea value={formData.desc} onChange={(e) => setFormData((prev) => ({
+          <textarea value={formData.desc} onChange={(e) => {
+          const value = e.target.value;
+          setFormData((prev) => ({
           ...prev,
-          desc: e.target.value }))}
+          desc: value }));
+        }}
         placeholder="请输入活动描述" className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" rows={4} />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">价格（元）</label>
-            <Input type="number" value={formData.price} onChange={(e) => setFormData((prev) => ({
+            <Input type="number" value={formData.price} onChange={(e) => {
+            const value = e.target.value;
+            setFormData((prev) => ({
             ...prev,
-            price: e.target.value }))}
+            price: value }));
+          }}
           placeholder="0" min="0" step="0.01" />
           </div>
         </div>
@@ -328,10 +340,13 @@ export function ActivityForm({
             <Input
               type="datetime-local"
               value={formData.startTime}
-              onChange={(e) => setFormData((prev) => ({
-                ...prev,
-                startTime: e.target.value
-              }))}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData((prev) => ({
+                  ...prev,
+                  startTime: value
+                }));
+              }}
               className="w-48 cursor-pointer"
               onClick={(e) => e.target.showPicker && e.target.showPicker()}
             />
@@ -341,10 +356,13 @@ export function ActivityForm({
             <Input
               type="datetime-local"
               value={formData.endTime}
-              onChange={(e) => setFormData((prev) => ({
-                ...prev,
-                endTime: e.target.value
-              }))}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData((prev) => ({
+                  ...prev,
+                  endTime: value
+                }));
+              }}
               className="w-48 cursor-pointer"
               onClick={(e) => e.target.showPicker && e.target.showPicker()}
             />
@@ -352,16 +370,22 @@ export function ActivityForm({
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">活动地址</label>
-          <Input value={formData.address} onChange={(e) => setFormData((prev) => ({
+          <Input value={formData.address} onChange={(e) => {
+          const value = e.target.value;
+          setFormData((prev) => ({
           ...prev,
-          address: e.target.value }))}
+          address: value }));
+        }}
         placeholder="请输入活动地址" />
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">联系电话</label>
-          <Input value={formData.callNumber || ''} onChange={(e) => setFormData((prev) => ({
+          <Input value={formData.callNumber || ''} onChange={(e) => {
+          const value = e.target.value;
+          setFormData((prev) => ({
           ...prev,
-          callNumber: e.target.value }))}
+          callNumber: value }));
+        }}
         placeholder="请输入联系电话（手机号/座机）" />
         </div>
       </div>
@@ -416,6 +440,7 @@ export function ActivityForm({
                 type="button"
                 onClick={() => {
                   const input = document.getElementById('new-tag-input');
+                  if (!input) return;
                   const value = input.value.trim().slice(0, 6);
                   if (value && formData.tags.length < 4) {
                     setFormData((prev) => ({

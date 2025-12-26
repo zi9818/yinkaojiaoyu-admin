@@ -24,7 +24,10 @@ export function ActivityFilters({
       <div className="flex-1">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input placeholder="搜索活动标题、描述或地址..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+          <Input placeholder="搜索活动标题、描述或地址..." value={searchTerm} onChange={(e) => {
+          const value = e.target.value;
+          setSearchTerm(value);
+        }} className="pl-10" />
         </div>
       </div>
 
@@ -37,7 +40,10 @@ export function ActivityFilters({
           <select
             className="w-full h-10 pl-9 pr-3 rounded-md border border-gray-200 bg-white"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+            const value = e.target.value;
+            setStatusFilter(value);
+          }}
           >
             <option value="all">全部状态</option>
             <option value="published">已发布</option>

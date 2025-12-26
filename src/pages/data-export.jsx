@@ -18,6 +18,11 @@ export default function DataExport(props) {
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStatus, setExportStatus] = useState('idle');
   const [exportResult, setExportResult] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const [previewData, setPreviewData] = useState([]);
+  const [previewPage, setPreviewPage] = useState(1);
+  const [previewLastUpdatedAt, setPreviewLastUpdatedAt] = useState(0);
   const [authChecked, setAuthChecked] = useState(false);
   const [forbidden, setForbidden] = useState(false);
   const [currentUid, setCurrentUid] = useState('');
@@ -122,21 +127,161 @@ export default function DataExport(props) {
 
   // 处理字段选择
   const handleFieldChange = (fieldId, checked) => {
-    if (checked) {
-      setSelectedFields([...selectedFields, fieldId]);
-    } else {
-      setSelectedFields(selectedFields.filter(id => id !== fieldId));
-    }
+    setSelectedFields((prev) => {
+      if (checked) {
+        if (prev.includes(fieldId)) return prev;
+        return [...prev, fieldId];
+      }
+      return prev.filter(id => id !== fieldId);
+    });
   };
 
   // 全选/取消全选
   const handleSelectAll = checked => {
     if (checked) {
-      setSelectedFields(fieldOptions[exportType].map(field => field.id));
+      setSelectedFields(() => fieldOptions[exportType].map(field => field.id));
     } else {
-      setSelectedFields([]);
+      setSelectedFields(() => []);
     }
   };
+
+  useEffect(() => {
+    setPreviewPage(1);
+  }, [exportType, dateRange, selectedFields.length]);
+
+  const formatDisplayValue = (field, rawValue) => {
+    let value = rawValue;
+
+    if (isTimeField(field)) {
+      return formatDateTime(value);
+    }
+    if (field === 'status' && exportType === 'orders') {
+      return formatOrderStatus(value);
+    }
+    if (field === 'isActive' || field === 'activity_isActive') {
+      return formatActiveStatus(value);
+    }
+    if (field === 'amount' || field === 'price' || field === 'activity_price') {
+      return formatAmount(value);
+    }
+
+    if (Array.isArray(value)) {
+      return value.join('、');
+    }
+    if (value === null || value === undefined) {
+      return '';
+    }
+    if (typeof value === 'object') {
+      try {
+        return JSON.stringify(value);
+      } catch (e) {
+        return String(value);
+      }
+    }
+    return String(value);
+  };
+
+  const loadPreviewData = async () => {
+    if (!authChecked || forbidden) {
+      setPreviewData([]);
+      setPreviewError('');
+      return;
+    }
+    if (selectedFields.length === 0) {
+      setPreviewData([]);
+      setPreviewError('');
+      return;
+    }
+    setPreviewLoading(true);
+    setPreviewError('');
+    try {
+      const tcb = await $w.cloud.getCloudInstance();
+      const db = tcb.database();
+
+      let collectionName = '';
+      if (exportType === 'activities') {
+        collectionName = 'activities';
+      } else if (exportType === 'orders') {
+        collectionName = 'orders';
+      } else if (exportType === 'users') {
+        collectionName = 'users';
+      }
+
+      let query = db.collection(collectionName);
+      try {
+        if (query?.orderBy && query?.limit) {
+          query = query.orderBy('createdAt', 'desc').limit(200);
+        }
+      } catch (e) {}
+
+      const result = await query.get();
+      let data = result.data || [];
+
+      const range = getDateRange();
+      if (range) {
+        const { startDate, endDate } = range;
+        data = data.filter(item => {
+          const value = item.createdAt;
+          if (!value) return false;
+          const d = new Date(value);
+          if (isNaN(d.getTime())) {
+            return false;
+          }
+          return d >= startDate && d <= endDate;
+        });
+      }
+
+      if (exportType === 'orders' && hasActivityFields()) {
+        const activityIds = [...new Set(data.map(order => order.activityId).filter(Boolean))];
+        if (activityIds.length > 0) {
+          const activitiesResult = await db.collection('activities')
+            .where({ _id: db.command.in(activityIds) })
+            .get();
+          const activitiesMap = {};
+          (activitiesResult.data || []).forEach(activity => {
+            activitiesMap[activity._id] = activity;
+          });
+          const activityFieldMapping = getActivityFieldMapping();
+          data = data.map(order => {
+            const activity = activitiesMap[order.activityId] || {};
+            const enrichedOrder = { ...order };
+            Object.entries(activityFieldMapping).forEach(([exportFieldId, sourceField]) => {
+              enrichedOrder[exportFieldId] = activity[sourceField];
+            });
+            return enrichedOrder;
+          });
+        }
+      }
+
+      const filteredData = data.map(item => {
+        const filteredItem = {};
+        selectedFields.forEach(field => {
+          filteredItem[field] = item[field];
+        });
+        return filteredItem;
+      });
+
+      setPreviewData(filteredData);
+      setPreviewLastUpdatedAt(Date.now());
+    } catch (e) {
+      setPreviewError(e?.message || '加载预览失败');
+      setPreviewData([]);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      loadPreviewData();
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [authChecked, forbidden, exportType, dateRange, selectedFields.join('|')]);
 
   // 计算当前选择的时间范围（统一按 createdAt 时间筛选）
   const getDateRange = () => {
@@ -215,6 +360,11 @@ export default function DataExport(props) {
   const hasActivityFields = () => {
     return selectedFields.some(fieldId => fieldId.startsWith('activity_'));
   };
+
+  const previewPageSize = 20;
+  const previewTotalPages = Math.max(1, Math.ceil((previewData || []).length / previewPageSize));
+  const safePreviewPage = Math.min(Math.max(previewPage, 1), previewTotalPages);
+  const previewPageData = (previewData || []).slice((safePreviewPage - 1) * previewPageSize, safePreviewPage * previewPageSize);
 
   // 获取选中的活动字段映射
   const getActivityFieldMapping = () => {
@@ -545,7 +695,10 @@ export default function DataExport(props) {
                 <select
                   className="w-full h-10 px-3 rounded-md border border-gray-200 bg-white"
                   value={exportType}
-                  onChange={(e) => setExportType(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setExportType(value);
+                  }}
                 >
                   <option value="activities">活动数据</option>
                   <option value="orders">订单数据</option>
@@ -562,7 +715,10 @@ export default function DataExport(props) {
                 <select
                   className="w-full h-10 px-3 rounded-md border border-gray-200 bg-white"
                   value={dateRange}
-                  onChange={(e) => setDateRange(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setDateRange(value);
+                  }}
                 >
                   {dateRangeOptions.map(option => (
                     <option key={option.value} value={option.value}>{option.label}</option>
@@ -579,7 +735,10 @@ export default function DataExport(props) {
                 <select
                   className="w-full h-10 px-3 rounded-md border border-gray-200 bg-white"
                   value={format}
-                  onChange={(e) => setFormat(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormat(value);
+                  }}
                 >
                   <option value="csv">CSV（.csv）</option>
                   <option value="excel">Excel（.xls）</option>
@@ -685,15 +844,124 @@ export default function DataExport(props) {
             </CardContent>
           </Card>}
 
-          {/* 导出按钮 */}
           <Card>
-            <CardContent className="pt-6">
-              <Button onClick={handleDirectExport} disabled={isExporting || selectedFields.length === 0} className="w-full bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-70" size="lg">
-                {isExporting ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />导出中...</> : <><Download className="w-4 h-4 mr-2" />开始导出</>}
-              </Button>
-              {selectedFields.length === 0 && <p className="text-sm text-red-500 mt-2 text-center">请至少选择一个字段</p>}
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center justify-between">
+                <span className="flex items-center">
+                  <Database className="w-5 h-5 mr-2" />
+                  数据预览
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      loadPreviewData();
+                    }}
+                    disabled={previewLoading || !authChecked || forbidden || selectedFields.length === 0}
+                    className="bg-white/70"
+                  >
+                    {previewLoading ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />刷新</> : <><RefreshCw className="w-4 h-4 mr-2" />刷新</>}
+                  </Button>
+                  <Button
+                    onClick={handleDirectExport}
+                    disabled={isExporting || !authChecked || forbidden || selectedFields.length === 0}
+                    className="bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-70"
+                  >
+                    {isExporting ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />导出中...</> : <><Download className="w-4 h-4 mr-2" />导出</>}
+                  </Button>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+                <div>
+                  共 {previewData.length} 条（预览仅展示前 200 条内的结果）
+                </div>
+                <div>
+                  {previewLastUpdatedAt ? `更新于：${new Date(previewLastUpdatedAt).toLocaleString('zh-CN')}` : ''}
+                </div>
+              </div>
+
+              {previewError ? (
+                <div className="text-sm text-red-600">{previewError}</div>
+              ) : null}
+
+              {selectedFields.length === 0 ? (
+                <div className="text-sm text-gray-500">请先选择导出字段后查看预览</div>
+              ) : null}
+
+              {selectedFields.length > 0 ? (
+                <div className="overflow-x-auto border rounded-lg">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        {selectedFields.map((field) => {
+                          const def = fieldOptions[exportType].find((f) => f.id === field);
+                          const label = def?.label || field;
+                          return (
+                            <th key={field} className="px-3 py-2 text-left font-medium text-gray-700 whitespace-nowrap">
+                              {label}
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {previewLoading ? (
+                        <tr>
+                          <td colSpan={selectedFields.length} className="px-3 py-6 text-center text-gray-500">
+                            <RefreshCw className="w-5 h-5 inline-block mr-2 animate-spin" />
+                            加载中...
+                          </td>
+                        </tr>
+                      ) : previewPageData.length === 0 ? (
+                        <tr>
+                          <td colSpan={selectedFields.length} className="px-3 py-6 text-center text-gray-500">
+                            暂无数据
+                          </td>
+                        </tr>
+                      ) : (
+                        previewPageData.map((row, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            {selectedFields.map((field) => (
+                              <td key={field} className="px-3 py-2 text-gray-900 whitespace-nowrap">
+                                {formatDisplayValue(field, row[field])}
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+
+              {selectedFields.length > 0 ? (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm text-gray-600">
+                    第 {safePreviewPage} / {previewTotalPages} 页
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={safePreviewPage <= 1}
+                      onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                    >
+                      上一页
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={safePreviewPage >= previewTotalPages}
+                      onClick={() => setPreviewPage((p) => Math.min(previewTotalPages, p + 1))}
+                    >
+                      下一页
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
+
         </div>
       </div>
     </div>;

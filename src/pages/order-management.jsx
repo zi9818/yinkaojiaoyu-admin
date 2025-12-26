@@ -353,14 +353,20 @@ export default function OrderManagement(props) {
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input placeholder="搜索用户姓名、手机号或活动标题..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
+              <Input placeholder="搜索用户姓名、手机号或活动标题..." value={searchTerm} onChange={(e) => {
+              const value = e.target.value;
+              setSearchTerm(value);
+            }} className="pl-10" />
             </div>
           </div>
           <div className="flex gap-2">
             <select
               className="w-48 h-10 px-3 rounded-md border border-blue-100 bg-white/80"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+              const value = e.target.value;
+              setStatusFilter(value);
+            }}
             >
               {statusOptions.map(option => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -479,10 +485,13 @@ export default function OrderManagement(props) {
                 <select
                   className="w-full h-10 px-3 rounded-md border border-gray-200 bg-white"
                   value={editForm.status}
-                  onChange={(e) => setEditForm({
+                  onChange={(e) => {
+                  const value = e.target.value;
+                  setEditForm({
                     ...editForm,
-                    status: e.target.value
-                  })}
+                    status: value
+                  });
+                }}
                 >
                   <option value="REGISTERED">已报名</option>
                   <option value="PAID">已支付</option>
@@ -491,10 +500,13 @@ export default function OrderManagement(props) {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">金额（元）</label>
-                <Input type="number" value={editForm.amount} onChange={e => setEditForm({
+                <Input type="number" value={editForm.amount} onChange={(e) => {
+                const value = e.target.value;
+                setEditForm({
                   ...editForm,
-                  amount: e.target.value
-                })} step="0.01" min="0" />
+                  amount: value
+                });
+              }} step="0.01" min="0" />
               </div>
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
