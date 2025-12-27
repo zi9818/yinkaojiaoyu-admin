@@ -69,6 +69,8 @@ export function ActivityForm({
   const [draggedDetailIndex, setDraggedDetailIndex] = useState(null);
   const [dragOverDetailIndex, setDragOverDetailIndex] = useState(null);
 
+  const MAX_TAGS = 10;
+
   const bannerInputRef = useRef(null);
   const detailInputRef = useRef(null);
   const customerNumbersInputRef = useRef(null);
@@ -77,6 +79,25 @@ export function ActivityForm({
     if (typeof num !== 'string') return false;
     const v = num.trim();
     return /^1\d{10}$/.test(v);
+  };
+
+  const parseCustomerNumbers = (text) => {
+    if (!text) return [];
+    const parts = String(text)
+      .split(/[\n,，、\s]+/)
+      .map((v) => (v || '').trim())
+      .filter(Boolean)
+      .map((v) => String(v).replace(/\D/g, '').slice(0, 11))
+      .filter(Boolean);
+
+    const seen = new Set();
+    const result = [];
+    for (const p of parts) {
+      if (seen.has(p)) continue;
+      seen.add(p);
+      result.push(p);
+    }
+    return result;
   };
 
   const isValidCallNumber = (num) => {
@@ -500,7 +521,7 @@ export function ActivityForm({
       <div className="space-y-4">
         <h3 className="text-lg font-medium text-gray-900">标签</h3>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">活动标签（最多4个，每个最多6个字）</label>
+          <label className="text-sm font-medium text-gray-700">活动标签（最多10个，每个最多6个字）</label>
 
           {/* 已添加的标签 - 一行展示 */}
           <div className="flex flex-wrap items-center gap-2">
@@ -521,7 +542,7 @@ export function ActivityForm({
           </div>
 
           {/* 新增标签输入 - 一行紧凑布局 */}
-          {formData.tags.length < 4 && (
+          {formData.tags.length < MAX_TAGS && (
             <div className="flex items-center gap-2">
               <Input
                 id="new-tag-input"
@@ -532,7 +553,7 @@ export function ActivityForm({
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     const value = e.target.value.trim().slice(0, 6);
-                    if (value && formData.tags.length < 4) {
+                    if (value && formData.tags.length < MAX_TAGS) {
                       setFormData((prev) => ({
                         ...prev,
                         tags: [...prev.tags, value]
@@ -548,7 +569,7 @@ export function ActivityForm({
                   const input = document.getElementById('new-tag-input');
                   if (!input) return;
                   const value = input.value.trim().slice(0, 6);
-                  if (value && formData.tags.length < 4) {
+                  if (value && formData.tags.length < MAX_TAGS) {
                     setFormData((prev) => ({
                       ...prev,
                       tags: [...prev.tags, value]
@@ -561,13 +582,17 @@ export function ActivityForm({
               >
                 <Plus className="w-4 h-4" />
               </button>
-              <span className="text-xs text-gray-400">{formData.tags.length}/4</span>
+              <span className="text-xs text-gray-400">{formData.tags.length}/{MAX_TAGS}</span>
             </div>
           )}
 
           {/* 已满提示 */}
-          {formData.tags.length >= 4 && (
-            <p className="text-xs text-gray-500">已添加 4/4 个标签</p>
+          {formData.tags.length >= MAX_TAGS && (
+            <p className="text-xs text-gray-500">
+              {formData.tags.length > MAX_TAGS
+                ? `已添加 ${formData.tags.length}/${MAX_TAGS} 个标签，已超出上限，请删除多余标签`
+                : `已添加 ${MAX_TAGS}/${MAX_TAGS} 个标签`}
+            </p>
           )}
         </div>
       </div>

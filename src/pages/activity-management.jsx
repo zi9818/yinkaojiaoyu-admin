@@ -537,7 +537,7 @@ export default function ActivityManagementPage(props) {
         address: formData.address.trim(),
         startTime: formData.startTime,
         endTime: formData.endTime,
-        tags: formData.tags.filter(tag => tag && typeof tag === 'string' && tag.trim()),
+        tags: formData.tags.filter(tag => tag && typeof tag === 'string' && tag.trim()).slice(0, 10),
         customerNumbers: (Array.isArray(formData.customerNumbers) ? formData.customerNumbers : []).filter(num => num && typeof num === 'string' && isValidCustomerNumber(num)),
         bannerImages: formData.bannerImages.filter(img => img && typeof img === 'string' && img.trim()),
         detailImages: formData.detailImages.filter(img => img && typeof img === 'string' && img.trim()),
@@ -646,7 +646,7 @@ export default function ActivityManagementPage(props) {
         address: formData.address.trim(),
         startTime: formData.startTime,
         endTime: formData.endTime,
-        tags: formData.tags.filter(tag => tag && typeof tag === 'string' && tag.trim()),
+        tags: formData.tags.filter(tag => tag && typeof tag === 'string' && tag.trim()).slice(0, 10),
         customerNumbers: (Array.isArray(formData.customerNumbers) ? formData.customerNumbers : []).filter(num => num && typeof num === 'string' && isValidCustomerNumber(num)),
         bannerImages: formData.bannerImages.filter(img => img && typeof img === 'string' && img.trim()),
         detailImages: formData.detailImages.filter(img => img && typeof img === 'string' && img.trim()),
@@ -753,7 +753,7 @@ export default function ActivityManagementPage(props) {
 
   // 标签回调函数
   const handleAddTag = (tag) => {
-    if (tag && tag.trim() && formData.tags.length < 4) {
+    if (tag && tag.trim() && formData.tags.length < 10) {
       setFormData((prev) => ({
         ...prev,
         tags: [...prev.tags, tag.trim().slice(0, 6)]
