@@ -535,8 +535,8 @@ export default function ActivityManagementPage(props) {
         desc: formData.desc.trim(),
         price: Math.round((parseFloat(formData.price) || 0) * 100),
         address: formData.address.trim(),
-        startTime: formData.startTime,
-        endTime: formData.endTime,
+        startTime: normalizeDateValue(formData.startTime),
+        endTime: normalizeDateValue(formData.endTime),
         tags: formData.tags.filter(tag => tag && typeof tag === 'string' && tag.trim()).slice(0, 10),
         customerNumbers: (Array.isArray(formData.customerNumbers) ? formData.customerNumbers : []).filter(num => num && typeof num === 'string' && isValidCustomerNumber(num)),
         bannerImages: formData.bannerImages.filter(img => img && typeof img === 'string' && img.trim()),
@@ -644,8 +644,8 @@ export default function ActivityManagementPage(props) {
         desc: formData.desc.trim(),
         price: Math.round((parseFloat(formData.price) || 0) * 100),
         address: formData.address.trim(),
-        startTime: formData.startTime,
-        endTime: formData.endTime,
+        startTime: normalizeDateValue(formData.startTime),
+        endTime: normalizeDateValue(formData.endTime),
         tags: formData.tags.filter(tag => tag && typeof tag === 'string' && tag.trim()).slice(0, 10),
         customerNumbers: (Array.isArray(formData.customerNumbers) ? formData.customerNumbers : []).filter(num => num && typeof num === 'string' && isValidCustomerNumber(num)),
         bannerImages: formData.bannerImages.filter(img => img && typeof img === 'string' && img.trim()),
@@ -804,8 +804,8 @@ export default function ActivityManagementPage(props) {
           price: fullActivity.price ? (fullActivity.price / 100).toString() : '', // 分转元显示
           address: fullActivity.address || '',
           callNumber: normalizeContacts(fullActivity.callNumber),
-          startTime: fullActivity.startTime || '',
-          endTime: fullActivity.endTime || '',
+          startTime: normalizeDateValue(fullActivity.startTime) || '',
+          endTime: normalizeDateValue(fullActivity.endTime) || '',
           tags: fullActivity.tags || [],
           customerNumbers: Array.isArray(fullActivity.customerNumbers) ? fullActivity.customerNumbers : [],
           bannerImages: fullActivity.bannerImages || [],
@@ -814,34 +814,6 @@ export default function ActivityManagementPage(props) {
           maxParticipants: fullActivity.maxParticipants?.toString() || ''
         });
         setShowEditDialog(true);
-      } else {
-        toast({
-          title: "加载失败",
-          description: "无法加载活动详情，请重试",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('加载活动详情失败:', error);
-      toast({
-        title: "加载失败",
-        description: "加载活动详情失败，请重试",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 打开详情对话框 - 加载完整数据
-  const openDetailDialog = async activity => {
-    setLoading(true);
-    try {
-      // 加载活动的完整数据
-      const fullActivity = await loadActivityDetail(activity._id);
-      if (fullActivity) {
-        setSelectedActivity(fullActivity);
-        setShowDetailDialog(true);
       } else {
         toast({
           title: "加载失败",
@@ -871,25 +843,37 @@ export default function ActivityManagementPage(props) {
     return isActive ? 'default' : 'secondary';
   };
 
+  const toYmd = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const normalizeDateValue = (value) => {
+    if (value === null || value === undefined || value === '') return '';
+    if (typeof value === 'string') {
+      const s = value.trim();
+      if (!s) return '';
+      // 兼容 YYYY-MM-DD 或 YYYY-MM-DDTHH:mm:ss 等
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    }
+    try {
+      const date = typeof value === 'number' ? new Date(value) : new Date(String(value));
+      if (Number.isNaN(date.getTime())) return '';
+      return toYmd(date);
+    } catch (e) {
+      return '';
+    }
+  };
+
   // 格式化时间 - 处理时间戳和字符串格式
   const formatDateTime = dateValue => {
     if (!dateValue) return '未设置';
     try {
-      let date;
-      // 如果是数字（时间戳），转换为Date对象
-      if (typeof dateValue === 'number') {
-        date = new Date(dateValue);
-      } else {
-        // 如果是字符串，直接转换为Date对象
-        date = new Date(dateValue);
-      }
-      return date.toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      const normalized = normalizeDateValue(dateValue);
+      if (!normalized) return '未设置';
+      return normalized.replace(/-/g, '/');
     } catch (error) {
       console.error('时间格式化错误:', error);
       return '时间格式错误';

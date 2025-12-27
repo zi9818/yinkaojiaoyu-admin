@@ -412,7 +412,7 @@ export function ActivityForm({
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">开始时间</label>
             <Input
-              type="datetime-local"
+              type="date"
               value={formData.startTime}
               onChange={(e) => {
                 const value = e.target.value;
@@ -428,7 +428,7 @@ export function ActivityForm({
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">结束时间</label>
             <Input
-              type="datetime-local"
+              type="date"
               value={formData.endTime}
               onChange={(e) => {
                 const value = e.target.value;
