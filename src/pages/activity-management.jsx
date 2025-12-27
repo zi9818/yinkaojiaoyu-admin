@@ -833,6 +833,32 @@ export default function ActivityManagementPage(props) {
     }
   };
 
+  const openDetailDialog = async activity => {
+    setLoading(true);
+    try {
+      const fullActivity = await loadActivityDetail(activity._id);
+      if (fullActivity) {
+        setSelectedActivity(fullActivity);
+        setShowDetailDialog(true);
+      } else {
+        toast({
+          title: "加载失败",
+          description: "无法加载活动详情，请重试",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('加载活动详情失败:', error);
+      toast({
+        title: "加载失败",
+        description: "加载活动详情失败，请重试",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 获取发布状态显示 - 使用isActive字段
   const getStatusDisplay = isActive => {
     return isActive ? '已发布' : '未发布';
