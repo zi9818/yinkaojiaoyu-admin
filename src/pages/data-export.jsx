@@ -442,9 +442,17 @@ export default function DataExport(props) {
   const formatDateTime = value => {
     if (!value) return '';
     try {
-      const date = typeof value === 'number' ? new Date(value) : new Date(value);
-      if (isNaN(date.getTime())) {
+      // 导出/预览：字符串类型直接按数据库原值展示，避免被 Date 解析后产生时区偏移（如 08:00:00）
+      if (typeof value === 'string') {
         return value;
+      }
+
+      const date = (value instanceof Date)
+        ? value
+        : (typeof value === 'number' ? new Date(value) : new Date(String(value)));
+
+      if (isNaN(date.getTime())) {
+        return String(value);
       }
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -455,7 +463,7 @@ export default function DataExport(props) {
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     } catch (error) {
       console.error('时间格式化错误:', error);
-      return value;
+      return typeof value === 'string' ? value : String(value);
     }
   };
 
