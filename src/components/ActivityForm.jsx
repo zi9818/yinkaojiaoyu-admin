@@ -647,7 +647,7 @@ export function ActivityForm({
                   点击上传图片
                 </span>
                 <span className="mt-1 block text-xs text-gray-500">
-                  支持 PNG, JPG, GIF 格式，单个文件不超过 5MB，最多5张
+                  支持 PNG, JPG, GIF 格式，单个文件不超过 5MB，最多5张；建议尺寸：1920×1080（16:9，非16:9会裁剪）
                 </span>
               </div>
               {bannerUploading && <div className="mt-2">
@@ -718,7 +718,7 @@ export function ActivityForm({
                   点击上传图片
                 </span>
                 <span className="mt-1 block text-xs text-gray-500">
-                  支持 PNG, JPG, GIF 格式，单个文件不超过 5MB，最多10张
+                  支持 PNG, JPG, GIF 格式，单个文件不超过 5MB，最多10张；建议宽度：1080px（高度不限，支持长海报/多图）
                 </span>
               </div>
               {detailUploading && <div className="mt-2">
