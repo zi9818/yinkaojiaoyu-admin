@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, Button, Input, useToast } fro
 // @ts-ignore;
 import { Activity } from 'lucide-react';
 import { ensureAdminAccess, getAuthSingleton } from './auth-guard';
-import { createRichTextSummary, getRichTextDisplayHtml, normalizeRichTextHtml } from '@/utils/richText';
+import { createRichTextSummary, getRichTextDisplayHtml, normalizeRichTextHtml } from '../components/richText';
 
 // @ts-ignore;
 import { ActivityList } from '@/components/ActivityList';

@@ -1,6 +1,6 @@
 // @ts-ignore;
 import React from 'react';
-import { getRichTextDisplayHtml } from '@/utils/richText';
+import { getRichTextDisplayHtml } from './richText';
 
 export function RichTextContent({
   html,

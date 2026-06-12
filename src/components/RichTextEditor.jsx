@@ -16,7 +16,7 @@ import {
   Undo2,
   Redo2
 } from 'lucide-react';
-import { normalizeRichTextHtml, sanitizeRichTextHtml } from '@/utils/richText';
+import { normalizeRichTextHtml, sanitizeRichTextHtml } from './richText';
 
 const COLOR_SWATCHES = [
   '#111827',
