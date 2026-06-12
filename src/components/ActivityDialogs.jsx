@@ -4,6 +4,8 @@ import React from 'react';
 import { Button, Badge } from '@/components/ui';
 // @ts-ignore;
 import { MapPin, Tag, ImageIcon, Phone } from 'lucide-react';
+// @ts-ignore;
+import { RichTextContent } from '@/components/RichTextContent';
 
 // @ts-ignore;
 import { ActivityForm } from './ActivityForm';
@@ -212,7 +214,7 @@ export function ActivityDialogs({
           {/* 活动描述 */}
           <div>
             <h3 className="text-lg font-semibold mb-3">活动描述</h3>
-            <p className="text-gray-700 whitespace-pre-wrap">{selectedActivity?.desc}</p>
+            <RichTextContent html={selectedActivity?.descRich} fallbackText={selectedActivity?.desc} />
           </div>
 
           {/* 活动地址 */}

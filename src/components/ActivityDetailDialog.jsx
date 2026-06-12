@@ -4,6 +4,8 @@ import React from 'react';
 import { Button, Badge } from '@/components/ui';
 // @ts-ignore;
 import { MapPin, Calendar, Users, Clock, Eye, Image as ImageIcon, Tag, DollarSign, Phone } from 'lucide-react';
+// @ts-ignore;
+import { RichTextContent } from '@/components/RichTextContent';
 
 function InlineModal({
   open,
@@ -133,7 +135,7 @@ export function ActivityDetailDialog({
           {/* 活动描述 */}
           <div>
             <h3 className="text-lg font-semibold mb-3">活动描述</h3>
-            <p className="text-gray-700 whitespace-pre-wrap">{activity.desc}</p>
+            <RichTextContent html={activity.descRich} fallbackText={activity.desc} />
           </div>
 
           {/* 活动地址 */}

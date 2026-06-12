@@ -4,6 +4,8 @@ import React, { useState, useRef } from 'react';
 import { Button, Input, Badge } from '@/components/ui';
 // @ts-ignore;
 import { X, Tag, Upload, Image as ImageIcon, Plus, GripVertical } from 'lucide-react';
+// @ts-ignore;
+import { RichTextEditor } from '@/components/RichTextEditor';
 
 // 独立的图片组件，支持云存储fileID
 function CloudImage({
@@ -383,13 +385,11 @@ export function ActivityForm({
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">活动描述</label>
-          <textarea value={formData.desc} onChange={(e) => {
-          const value = e.target.value;
+          <RichTextEditor value={formData.descRich} onChange={(value) => {
           setFormData((prev) => ({
           ...prev,
-          desc: value }));
-        }}
-        placeholder="请输入活动描述" className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" rows={4} />
+          descRich: value }));
+        }} placeholder="请输入活动描述，可设置标题、加粗、列表和颜色" minHeight={260} />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">

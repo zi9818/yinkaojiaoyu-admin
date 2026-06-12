@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, Button, Input, useToast } fro
 // @ts-ignore;
 import { Activity } from 'lucide-react';
 import { ensureAdminAccess, getAuthSingleton } from './auth-guard';
+import { createRichTextSummary, getRichTextDisplayHtml, normalizeRichTextHtml } from '@/utils/richText';
 
 // @ts-ignore;
 import { ActivityList } from '@/components/ActivityList';
@@ -52,6 +53,7 @@ export default function ActivityManagementPage(props) {
     title: '',
     subtitle: '',
     desc: '',
+    descRich: '',
     price: '',
     address: '',
     callNumber: [],
@@ -182,6 +184,7 @@ export default function ActivityManagementPage(props) {
         title: 1,
         subtitle: 1,
         desc: 1,
+        descRich: 1,
         price: 1,
         address: 1,
         callNumber: 1,
@@ -529,10 +532,13 @@ export default function ActivityManagementPage(props) {
     }
 
     try {
+      const descRich = normalizeRichTextHtml(formData.descRich);
+      const descSummary = createRichTextSummary(descRich) || formData.desc.trim();
       const activityData = {
         title: formData.title.trim(),
         subtitle: formData.subtitle.trim(),
-        desc: formData.desc.trim(),
+        desc: descSummary,
+        descRich: descRich,
         price: Math.round((parseFloat(formData.price) || 0) * 100),
         address: formData.address.trim(),
         startTime: normalizeDateValue(formData.startTime),
@@ -638,10 +644,13 @@ export default function ActivityManagementPage(props) {
     }
 
     try {
+      const descRich = normalizeRichTextHtml(formData.descRich);
+      const descSummary = createRichTextSummary(descRich) || formData.desc.trim();
       const activityData = {
         title: formData.title.trim(),
         subtitle: formData.subtitle.trim(),
-        desc: formData.desc.trim(),
+        desc: descSummary,
+        descRich: descRich,
         price: Math.round((parseFloat(formData.price) || 0) * 100),
         address: formData.address.trim(),
         startTime: normalizeDateValue(formData.startTime),
@@ -774,6 +783,7 @@ export default function ActivityManagementPage(props) {
       title: '',
       subtitle: '',
       desc: '',
+      descRich: '',
       price: '',
       address: '',
       callNumber: [],
@@ -801,6 +811,7 @@ export default function ActivityManagementPage(props) {
           title: fullActivity.title || '',
           subtitle: fullActivity.subtitle || '',
           desc: fullActivity.desc || '',
+          descRich: normalizeRichTextHtml(fullActivity.descRich || '') || getRichTextDisplayHtml('', fullActivity.desc || ''),
           price: fullActivity.price ? (fullActivity.price / 100).toString() : '', // 分转元显示
           address: fullActivity.address || '',
           callNumber: normalizeContacts(fullActivity.callNumber),
