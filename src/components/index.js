@@ -5,5 +5,5 @@ export * from './ActivityFilters.jsx';
 export * from './ActivityForm.jsx';
 export * from './ActivityList.jsx';
 export * from './ImageUpload.jsx';
-export * from './RichTextEditor.jsx';
 export * from './RichTextContent.jsx';
+export * from './RichTextEditor.jsx';
