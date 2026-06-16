@@ -321,6 +321,14 @@ export function RichTextEditor({
           padding-left: 20px;
         }
 
+        .activity-rich-editor__editable ul {
+          list-style: disc;
+        }
+
+        .activity-rich-editor__editable ol {
+          list-style: decimal;
+        }
+
         .activity-rich-editor__editable li {
           margin-bottom: 8px;
         }

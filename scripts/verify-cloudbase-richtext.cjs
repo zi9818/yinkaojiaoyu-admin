@@ -185,13 +185,10 @@ function createPreviewHtml({ sampleRichHtml, adminPreviewHtml, miniPreviewHtml, 
 
 function main() {
   const adminRichTextBundle = path.join(tempDir, 'admin-richText.cjs');
-  const adminBridgeBundle = path.join(tempDir, 'admin-bridge.cjs');
 
   bundleWithEsbuild(path.join(repoRoot, 'src', 'components', 'richText.js'), adminRichTextBundle);
-  bundleWithEsbuild(path.join(repoRoot, 'src', 'components', 'cloudbaseRichTextBridge.js'), adminBridgeBundle);
 
   const adminRichText = require(adminRichTextBundle);
-  const bridge = require(adminBridgeBundle);
   const miniRichText = require(path.join(miniRepoRoot, 'utils', 'richText.js'));
 
   const sampleRichHtml = [
@@ -213,46 +210,14 @@ function main() {
   const summary = adminRichText.createRichTextSummary(sampleRichHtml);
   assert(summary.includes('第一段保留换行和段落结构'), '后台摘要生成未提取出正文内容');
   assert(summary.includes('支持序号列表'), '后台摘要生成未提取出列表内容');
-
-  const editorCalls = [];
-  const previewCalls = [];
-  const $w = {
-    activityDescRichEditor: {
-      value: '',
-      setValue(value) {
-        editorCalls.push(['setValue', value]);
-        this.value = value;
-      },
-      clearValue() {
-        editorCalls.push(['clearValue']);
-        this.value = '';
-      }
-    },
-    activityDescRichPreview: {
-      value: '',
-      setValue(value) {
-        previewCalls.push(['setValue', value]);
-        this.value = value;
-      }
-    }
-  };
-
-  assert(bridge.writeCloudBaseRichTextValue($w, sampleRichHtml), 'CloudBase 编辑器桥接写入失败');
-  assert(editorCalls[0] && editorCalls[0][0] === 'setValue', 'CloudBase 编辑器桥接没有优先使用 setValue');
-  assert(String($w.activityDescRichEditor.value).includes('<ol'), 'CloudBase 编辑器桥接写入后内容不完整');
-
-  assert(bridge.writeCloudBaseRichTextValue($w, ''), 'CloudBase 编辑器桥接清空失败');
-  assert(editorCalls.some((item) => item[0] === 'clearValue'), 'CloudBase 编辑器桥接清空时没有调用 clearValue');
-
-  const fallbackPlainText = '第一行保留换行\n第二行继续展示';
-  assert(bridge.writeCloudBaseRichTextPreviewValue($w, '', fallbackPlainText), 'CloudBase 查看态桥接写入失败');
-  assert(previewCalls[0] && previewCalls[0][0] === 'setValue', 'CloudBase 查看态桥接没有优先使用 setValue');
-  assert(String($w.activityDescRichPreview.value).includes('<p'), 'CloudBase 查看态纯文本回退没有转成段落结构');
+  assert(summary.includes('支持颜色'), '后台摘要生成未提取出带样式的列表项内容');
 
   const miniPreviewHtml = miniRichText.getRichTextDisplayHtml(sampleRichHtml, summary);
   assert(miniPreviewHtml.includes('<ol'), '小程序展示 HTML 丢失了有序列表结构');
   assert(miniPreviewHtml.includes('<blockquote'), '小程序展示 HTML 丢失了引用结构');
+  assert(miniPreviewHtml.includes('list-style-type: decimal'), '小程序展示 HTML 缺少显式有序列表样式');
 
+  const fallbackPlainText = '第一行保留换行\n第二行继续展示';
   const richTextImageIds = miniRichText.extractCloudRichTextImageIds(miniPreviewHtml);
   assert(richTextImageIds.length === 1, '小程序富文本云图片提取数量不正确');
   assert(richTextImageIds[0] === 'cloud://demo-bucket/richtext/banner.png', '小程序富文本云图片提取结果不正确');
@@ -276,10 +241,11 @@ function main() {
   assert(Array.isArray(adminMockData) && adminMockData.some((item) => typeof item?.descRich === 'string' && item.descRich.trim()), 'admin 本地 datasource 示例数据里缺少 descRich 样例');
 
   const adminPageSource = fs.readFileSync(path.join(repoRoot, 'src', 'pages', 'activity-management.jsx'), 'utf8');
-  assert(adminPageSource.includes('descEditorSlot'), '活动管理页源码中缺少 descEditorSlot 接口');
-  assert(adminPageSource.includes('descPreviewSlot'), '活动管理页源码中缺少 descPreviewSlot 接口');
-  assert(adminPageSource.includes('contentSlot1'), '活动管理页源码中缺少 contentSlot1 兼容逻辑');
-  assert(adminPageSource.includes('contentSlot2'), '活动管理页源码中缺少 contentSlot2 兼容逻辑');
+  const adminFormSource = fs.readFileSync(path.join(repoRoot, 'src', 'components', 'ActivityForm.jsx'), 'utf8');
+  const adminDialogSource = fs.readFileSync(path.join(repoRoot, 'src', 'components', 'ActivityDialogs.jsx'), 'utf8');
+  assert(adminPageSource.includes('normalizeRichTextHtml(formData.descRich)'), '活动管理页保存链路没有直接读取表单富文本值');
+  assert(adminFormSource.includes('<RichTextEditor'), '活动表单没有接入内置富文本编辑器');
+  assert(adminDialogSource.includes('<RichTextContent html={selectedActivity?.descRich}'), '活动详情弹窗没有使用富文本查看组件');
 
   const previewDir = path.join(repoRoot, 'docs', 'artifacts');
   fs.mkdirSync(previewDir, { recursive: true });
@@ -296,7 +262,7 @@ function main() {
   }), 'utf8');
 
   console.log('ADMIN_NORMALIZE_OK');
-  console.log('BRIDGE_WRITE_OK');
+  console.log('ADMIN_EDITOR_FLOW_OK');
   console.log('MINIPROGRAM_RICHTEXT_OK');
   console.log('SCHEMA_AND_PAGE_WIRING_OK');
   console.log(`PREVIEW_FILE=${previewFile}`);

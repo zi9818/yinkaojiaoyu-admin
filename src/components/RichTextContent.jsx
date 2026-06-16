@@ -58,6 +58,12 @@ export function RichTextContent({
           margin: 0 0 12px;
           padding-left: 20px;
         }
+        .activity-rich-text ul {
+          list-style: disc;
+        }
+        .activity-rich-text ol {
+          list-style: decimal;
+        }
         .activity-rich-text li {
           margin-bottom: 8px;
         }

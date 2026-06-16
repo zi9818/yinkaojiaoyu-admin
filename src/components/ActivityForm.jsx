@@ -4,10 +4,10 @@ import React, { useState, useRef } from 'react';
 import { Button, Input, Badge } from '@/components/ui';
 // @ts-ignore;
 import { X, Tag, Upload, Image as ImageIcon, Plus, GripVertical } from 'lucide-react';
-import {
-  ACTIVITY_DESC_EDITOR_COMPONENT_ID,
-  syncCloudBaseRichTextValueWhenReady
-} from '@/components/cloudbaseRichTextBridge';
+// @ts-ignore;
+import { RichTextEditor } from '@/components/RichTextEditor';
+// @ts-ignore;
+import { createRichTextSummary } from '@/components/richText';
 
 // 独立的图片组件，支持云存储fileID
 function CloudImage({
@@ -53,7 +53,6 @@ function CloudImage({
   return <img src={imageUrl} alt={alt} className={className} onError={handleError} />;
 }
 export function ActivityForm({
-  $w,
   formData,
   setFormData,
   onBannerImageUpload,
@@ -62,7 +61,6 @@ export function ActivityForm({
   onRemoveDetailImage,
   onAddTag,
   onRemoveTag,
-  descEditorSlot,
   isEdit = false })
 {
   const [bannerUploading, setBannerUploading] = useState(false);
@@ -178,13 +176,6 @@ export function ActivityForm({
 
     setCustomerNumbersText(current.join('\n'));
   }, [formData.customerNumbers]);
-
-  React.useEffect(() => {
-    if (!$w || !descEditorSlot || typeof window === 'undefined') return undefined;
-
-    // 官方 WdRichText 组件通过插槽挂载，等待插槽内容进入页面后再回填当前富文本值。
-    return syncCloudBaseRichTextValueWhenReady($w, formData.descRich || '');
-  }, [$w, descEditorSlot, formData.descRich]);
 
   // 轮播图拖拽排序处理
   const handleBannerDragStart = (e, index) => {
@@ -396,16 +387,20 @@ export function ActivityForm({
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">活动描述</label>
-          {descEditorSlot ? <div className="rounded-lg border border-gray-200 bg-white p-3">
-              {descEditorSlot}
-            </div> : <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <div className="font-medium">未配置 CloudBase 官方富文本编辑器</div>
-              <div className="mt-1 text-xs leading-6 text-amber-800">
-                请在当前 JSX 页面高级属性中声明插槽 <code>descEditorSlot</code>，拖入一个 <code>WdRichText</code> 组件，并将组件 ID 设为 <code>{ACTIVITY_DESC_EDITOR_COMPONENT_ID}</code>。
-              </div>
-            </div>}
+          <RichTextEditor
+            value={formData.descRich}
+            placeholder="请输入活动描述"
+            onChange={(html) => {
+              // 编辑态同时维护富文本正文和纯文本摘要，避免弹窗内状态与最终保存结果脱节。
+              setFormData((prev) => ({
+                ...prev,
+                descRich: html,
+                desc: createRichTextSummary(html)
+              }));
+            }}
+          />
           <div className="text-xs text-gray-500">
-            活动描述已切换为 CloudBase 官方富文本组件承载；保存时会直接读取组件当前 HTML 值，若官方组件未挂载成功则会阻止保存，避免“编辑了但没有生效”。
+            当前使用页面内置富文本编辑器，支持标题、列表、引用、链接和颜色；保存时会直接落库到 <code>descRich</code>，活动摘要会自动同步生成。
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

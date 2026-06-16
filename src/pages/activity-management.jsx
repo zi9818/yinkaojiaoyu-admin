@@ -7,11 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle, Button, Input, useToast } fro
 import { Activity } from 'lucide-react';
 import { ensureAdminAccess, getAuthSingleton } from './auth-guard';
 import { createRichTextSummary, getRichTextDisplayHtml, normalizeRichTextHtml } from '../components/richText';
-import {
-  ACTIVITY_DESC_EDITOR_COMPONENT_ID,
-  getCloudBaseRichTextEditorState,
-  isCloudBaseRichTextEditorReady
-} from '../components/cloudbaseRichTextBridge';
 
 // @ts-ignore;
 import { ActivityList } from '@/components/ActivityList';
@@ -23,22 +18,13 @@ import { ActivityFilters } from '@/components/ActivityFilters';
 import { ActivityDialogs } from '@/components/ActivityDialogs';
 export default function ActivityManagementPage(props) {
   const {
-    $w,
-    descEditorSlot,
-    descPreviewSlot,
-    contentSlot1,
-    contentSlot2
+    $w
   } = props;
   const NAV_TARGET_KEY = '__yinkaojiaoyu_admin_nav_target__';
 
   const {
     toast
   } = useToast();
-  // 兼容不同版本 CloudBase JSX 编辑器的插槽注入方式：
-  // 1. 新方案：直接按 slot ID 注入 descEditorSlot / descPreviewSlot
-  // 2. 旧/当前某些版本：自动按声明顺序注入 contentSlot1 / contentSlot2
-  const resolvedDescEditorSlot = descEditorSlot || contentSlot1;
-  const resolvedDescPreviewSlot = descPreviewSlot || contentSlot2;
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
@@ -398,33 +384,11 @@ export default function ActivityManagementPage(props) {
   };
 
   const getCurrentDescRichValue = () => {
-    // 这里不能再用 editorValue || oldValue 的写法，否则用户清空富文本时会被旧内容“顶回来”。
-    const editorState = getCloudBaseRichTextEditorState($w);
-    if (editorState.hasStringValue) {
-      return normalizeRichTextHtml(editorState.value);
-    }
+    // 页面现在直接使用仓库内置富文本编辑器，保存时以表单里的最新 HTML 状态为准。
     return normalizeRichTextHtml(formData.descRich);
   };
 
   const validateRichTextEditorBeforeSubmit = () => {
-    if (!resolvedDescEditorSlot) {
-      toast({
-        title: "缺少富文本组件配置",
-        description: `当前页面还没有在 CloudBase JSX 高级属性里挂载富文本编辑插槽。请先在“声明组件插槽”中添加第一个插槽，并拖入一个组件 ID 为 ${ACTIVITY_DESC_EDITOR_COMPONENT_ID} 的官方 WdRichText 组件后再保存。`,
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    if (!isCloudBaseRichTextEditorReady($w)) {
-      toast({
-        title: "富文本编辑器未就绪",
-        description: `已检测到页面准备切换官方富文本，但当前拿不到 ${ACTIVITY_DESC_EDITOR_COMPONENT_ID}.value。请检查插槽是否已挂载成功，以及组件 ID 是否与约定一致。`,
-        variant: "destructive"
-      });
-      return false;
-    }
-
     return true;
   };
 
@@ -1119,7 +1083,7 @@ export default function ActivityManagementPage(props) {
         </div>
 
         {/* 对话框 */}
-        <ActivityDialogs $w={$w} showCreateDialog={showCreateDialog} setShowCreateDialog={setShowCreateDialog} showEditDialog={showEditDialog} setShowEditDialog={setShowEditDialog} showDetailDialog={showDetailDialog} setShowDetailDialog={setShowDetailDialog} selectedActivity={selectedActivity} formData={formData} setFormData={setFormData} onCreateActivity={handleCreateActivity} onUpdateActivity={handleUpdateActivity} onEdit={openEditDialog} onTogglePublish={handleTogglePublish} getStatusDisplay={getStatusDisplay} getStatusColor={getStatusColor} formatDateTime={formatDateTime} formatPrice={formatPrice} handleBannerImageUpload={handleBannerImageUpload} handleRemoveBannerImage={handleRemoveBannerImage} handleDetailImageUpload={handleDetailImageUpload} handleRemoveDetailImage={handleRemoveDetailImage} handleAddTag={handleAddTag} handleRemoveTag={handleRemoveTag} descEditorSlot={resolvedDescEditorSlot} descPreviewSlot={resolvedDescPreviewSlot} />
+        <ActivityDialogs showCreateDialog={showCreateDialog} setShowCreateDialog={setShowCreateDialog} showEditDialog={showEditDialog} setShowEditDialog={setShowEditDialog} showDetailDialog={showDetailDialog} setShowDetailDialog={setShowDetailDialog} selectedActivity={selectedActivity} formData={formData} setFormData={setFormData} onCreateActivity={handleCreateActivity} onUpdateActivity={handleUpdateActivity} onEdit={openEditDialog} onTogglePublish={handleTogglePublish} getStatusDisplay={getStatusDisplay} getStatusColor={getStatusColor} formatDateTime={formatDateTime} formatPrice={formatPrice} handleBannerImageUpload={handleBannerImageUpload} handleRemoveBannerImage={handleRemoveBannerImage} handleDetailImageUpload={handleDetailImageUpload} handleRemoveDetailImage={handleRemoveDetailImage} handleAddTag={handleAddTag} handleRemoveTag={handleRemoveTag} />
       </div>
     </div>;
 }

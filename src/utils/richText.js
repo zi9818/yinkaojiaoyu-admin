@@ -33,12 +33,14 @@ const DEFAULT_STYLES = {
   ul: {
     margin: '0 0 12px',
     padding: '0 0 0 20px',
-    color: '#333333'
+    color: '#333333',
+    'list-style-type': 'disc'
   },
   ol: {
     margin: '0 0 12px',
     padding: '0 0 0 20px',
-    color: '#333333'
+    color: '#333333',
+    'list-style-type': 'decimal'
   },
   li: {
     margin: '0 0 8px',
@@ -124,6 +126,7 @@ const ALLOWED_STYLE_PROPS = new Set([
   'max-width',
   'height',
   'width',
+  'list-style-type',
   'border-left',
   'border-radius'
 ]);
