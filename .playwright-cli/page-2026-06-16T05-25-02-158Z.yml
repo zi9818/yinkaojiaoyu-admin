@@ -1,0 +1,77 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - heading "Admin 编辑器预览" [level=1] [ref=e6]
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - button "撤销" [ref=e9]:
+          - img [ref=e10]
+        - button "重做" [disabled] [ref=e13]:
+          - img [ref=e14]
+        - button "加粗" [ref=e17]:
+          - img [ref=e18]
+        - button "斜体" [ref=e20]:
+          - img [ref=e21]
+        - button "下划线" [ref=e23]:
+          - img [ref=e24]
+        - button "二级标题" [ref=e26]:
+          - img [ref=e27]
+        - button "三级标题" [ref=e29]:
+          - img [ref=e30]
+        - button "无序列表" [ref=e33]:
+          - img [ref=e34]
+        - button "有序列表" [ref=e35]:
+          - img [ref=e36]
+        - button "引用" [ref=e39]:
+          - img [ref=e40]
+        - button "插入链接" [ref=e43]:
+          - img [ref=e44]
+        - button "取消链接" [disabled] [ref=e47]:
+          - img [ref=e48]
+        - button "清除格式" [ref=e51]:
+          - img [ref=e52]
+        - generic [ref=e55]:
+          - 'button "文字颜色 #111827" [ref=e56]'
+          - 'button "文字颜色 #dc2626" [ref=e57]'
+          - 'button "文字颜色 #ea580c" [ref=e58]'
+          - 'button "文字颜色 #16a34a" [ref=e59]'
+          - 'button "文字颜色 #2563eb" [ref=e60]'
+          - 'button "文字颜色 #7c3aed" [ref=e61]'
+      - generic [ref=e63]:
+        - heading "暑期活动说明" [level=2] [ref=e64]:
+          - strong [ref=e65]: 暑期活动说明
+        - paragraph [ref=e66]: 第一段保留换行和段落结构。
+        - list [ref=e67]:
+          - listitem [ref=e68]:
+            - paragraph [ref=e69]: 支持列表
+          - listitem [ref=e70]:
+            - paragraph [ref=e71]: 支持颜色
+        - blockquote [ref=e72]:
+          - paragraph [ref=e73]: 引用内容也要保留。
+        - paragraph [ref=e74]
+      - generic [ref=e75]: 支持标题、加粗、列表、引用、链接和文字颜色。活动列表摘要会根据这里的内容自动生成。
+  - generic [ref=e76]:
+    - generic [ref=e77]:
+      - heading "后台查看态" [level=2] [ref=e78]
+      - generic [ref=e79]:
+        - heading "暑期活动说明" [level=2] [ref=e80]:
+          - strong [ref=e81]: 暑期活动说明
+        - paragraph [ref=e82]: 第一段保留换行和段落结构。
+        - list [ref=e83]:
+          - listitem [ref=e84]:
+            - paragraph [ref=e85]: 支持列表
+          - listitem [ref=e86]:
+            - paragraph [ref=e87]: 支持颜色
+        - blockquote [ref=e88]:
+          - paragraph [ref=e89]: 引用内容也要保留。
+        - paragraph
+    - generic [ref=e90]:
+      - heading "小程序展示近似预览" [level=2] [ref=e91]
+      - generic [ref=e92]:
+        - generic [ref=e93]: 活动介绍
+        - generic [ref=e94]:
+          - heading "核心服务" [level=3] [ref=e95]
+          - paragraph [ref=e96]: 覆盖小学、初中、高中全阶段。
+          - paragraph [ref=e97]: 通过小程序提前报名，即可享受专属福利。
+          - list [ref=e98]:
+            - listitem [ref=e99]: 线下授课
+            - listitem [ref=e100]: 上门家教
