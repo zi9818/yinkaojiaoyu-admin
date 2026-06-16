@@ -23,6 +23,13 @@
 ]
 ```
 
+> 如果你当前使用的 CloudBase 编辑器版本没有显式的 slot ID 输入框，只能看到“声明组件插槽”的列表项，也可以直接按顺序声明两个插槽：
+>
+> 1. 第一个插槽放“活动描述编辑”
+> 2. 第二个插槽放“活动描述展示”
+>
+> 当前源码已经兼容这类版本自动注入的 `contentSlot1 / contentSlot2`。
+
 ### 2. 在 `descEditorSlot` 中拖入官方 `WdRichText`
 
 - 组件名称：`WdRichText`

@@ -278,6 +278,8 @@ function main() {
   const adminPageSource = fs.readFileSync(path.join(repoRoot, 'src', 'pages', 'activity-management.jsx'), 'utf8');
   assert(adminPageSource.includes('descEditorSlot'), '活动管理页源码中缺少 descEditorSlot 接口');
   assert(adminPageSource.includes('descPreviewSlot'), '活动管理页源码中缺少 descPreviewSlot 接口');
+  assert(adminPageSource.includes('contentSlot1'), '活动管理页源码中缺少 contentSlot1 兼容逻辑');
+  assert(adminPageSource.includes('contentSlot2'), '活动管理页源码中缺少 contentSlot2 兼容逻辑');
 
   const previewDir = path.join(repoRoot, 'docs', 'artifacts');
   fs.mkdirSync(previewDir, { recursive: true });
