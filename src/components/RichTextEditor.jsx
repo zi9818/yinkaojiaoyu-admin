@@ -1,5 +1,5 @@
 // @ts-ignore;
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 // @ts-ignore;
 import {
   Bold,
@@ -16,17 +16,7 @@ import {
   Undo2,
   Redo2
 } from 'lucide-react';
-// @ts-ignore;
-import { EditorContent, useEditor } from '@tiptap/react';
-// @ts-ignore;
-import StarterKit from '@tiptap/starter-kit';
-// @ts-ignore;
-import { TextStyle } from '@tiptap/extension-text-style';
-// @ts-ignore;
-import Color from '@tiptap/extension-color';
-// @ts-ignore;
-import Placeholder from '@tiptap/extension-placeholder';
-import { normalizeRichTextHtml } from './richText';
+import { normalizeRichTextHtml, sanitizeRichTextHtml } from './richText';
 
 const COLOR_SWATCHES = [
   '#111827',
@@ -60,100 +50,223 @@ function ToolbarButton({
     </button>;
 }
 
+function findClosestTagName(node, root) {
+  let current = node && node.nodeType === 1 ? node : node?.parentNode;
+  while (current && current !== root) {
+    if (current.tagName) {
+      return String(current.tagName).toLowerCase();
+    }
+    current = current.parentNode;
+  }
+  return '';
+}
+
+function findClosestLink(node, root) {
+  let current = node && node.nodeType === 1 ? node : node?.parentNode;
+  while (current && current !== root) {
+    if (String(current.tagName || '').toLowerCase() === 'a') {
+      return current;
+    }
+    current = current.parentNode;
+  }
+  return null;
+}
+
 export function RichTextEditor({
   value,
   onChange,
   placeholder = '请输入活动描述',
   minHeight = 240
 }) {
-  // 统一先走项目已有的富文本清洗逻辑，避免旧数据和新编辑器的 HTML 结构不一致。
-  const normalizedValue = useMemo(() => normalizeRichTextHtml(value), [value]);
-
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-    StarterKit.configure({
-      heading: {
-        levels: [2, 3]
-      },
-      link: {
-        autolink: true,
-        linkOnPaste: true,
-        openOnClick: false,
-        defaultProtocol: 'https'
-      }
-    }),
-    TextStyle,
-    Color,
-    Placeholder.configure({
-      placeholder
-    })],
-    content: normalizedValue,
-    editorProps: {
-      attributes: {
-        class: 'activity-rich-editor__editable',
-        style: `min-height: ${minHeight}px;`
-      }
-    },
-    onUpdate: ({
-      editor: currentEditor
-    }) => {
-      // Tiptap 负责编辑体验，真正落库前仍统一收敛为项目可控的 HTML 结构。
-      const normalizedHtml = normalizeRichTextHtml(currentEditor.getHTML());
-      onChange?.(normalizedHtml);
-    },
-    onBlur: ({
-      editor: currentEditor
-    }) => {
-      const rawHtml = currentEditor.getHTML();
-      const normalizedHtml = normalizeRichTextHtml(rawHtml);
-
-      // 失焦时将内容归一化回编辑器，确保再次打开时结构和保存结果一致。
-      if (normalizedHtml !== rawHtml) {
-        currentEditor.commands.setContent(normalizedHtml || '', false);
-      }
-
-      onChange?.(normalizedHtml);
-    }
+  const editorRef = useRef(null);
+  const selectionRef = useRef(null);
+  const lastValueRef = useRef('');
+  const [toolbarState, setToolbarState] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    bulletList: false,
+    orderedList: false,
+    heading2: false,
+    heading3: false,
+    blockquote: false,
+    link: false
   });
+  const [isEmpty, setIsEmpty] = useState(!normalizeRichTextHtml(value));
+
+  // 编辑态尽量保留浏览器当前生成的 HTML，避免每次输入都被强行规范化后打断光标。
+  const editorValue = useMemo(() => sanitizeRichTextHtml(value), [value]);
+
+  const setEmptyStateFromHtml = (html) => {
+    setIsEmpty(!normalizeRichTextHtml(html));
+  };
+
+  const saveSelection = () => {
+    if (typeof window === 'undefined') return;
+    const editor = editorRef.current;
+    const selection = window.getSelection ? window.getSelection() : null;
+    if (!editor || !selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    if (!editor.contains(range.commonAncestorContainer)) return;
+    selectionRef.current = range.cloneRange();
+  };
+
+  const restoreSelection = () => {
+    if (typeof window === 'undefined') return;
+    const selection = window.getSelection ? window.getSelection() : null;
+    if (!selection || !selectionRef.current) return;
+    selection.removeAllRanges();
+    selection.addRange(selectionRef.current);
+  };
+
+  const updateToolbarState = () => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    const editor = editorRef.current;
+    const selection = window.getSelection ? window.getSelection() : null;
+    const anchorNode = selection?.anchorNode || null;
+    const anchorInsideEditor = !!(editor && anchorNode && editor.contains(anchorNode));
+
+    const queryState = (command) => {
+      if (!anchorInsideEditor) return false;
+      try {
+        return !!document.queryCommandState(command);
+      } catch (error) {
+        return false;
+      }
+    };
+
+    const blockTagName = anchorInsideEditor ? findClosestTagName(anchorNode, editor) : '';
+    setToolbarState({
+      bold: queryState('bold'),
+      italic: queryState('italic'),
+      underline: queryState('underline'),
+      bulletList: queryState('insertUnorderedList'),
+      orderedList: queryState('insertOrderedList'),
+      heading2: blockTagName === 'h2',
+      heading3: blockTagName === 'h3',
+      blockquote: blockTagName === 'blockquote',
+      link: !!(anchorInsideEditor && findClosestLink(anchorNode, editor))
+    });
+  };
+
+  const emitHtmlChange = (nextHtml) => {
+    const html = String(nextHtml || '');
+    lastValueRef.current = html;
+    setEmptyStateFromHtml(html);
+    onChange?.(html);
+  };
+
+  const syncEditorHtml = (nextHtml) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (editor.innerHTML !== nextHtml) {
+      editor.innerHTML = nextHtml;
+    }
+    emitHtmlChange(nextHtml);
+  };
+
+  const normalizeEditorContent = (mode = 'normalize') => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const rawHtml = editor.innerHTML;
+    const nextHtml = mode === 'sanitize'
+      ? sanitizeRichTextHtml(rawHtml)
+      : normalizeRichTextHtml(rawHtml);
+    syncEditorHtml(nextHtml);
+    updateToolbarState();
+  };
 
   useEffect(() => {
+    const editor = editorRef.current;
     if (!editor) return;
-    const currentNormalizedHtml = normalizeRichTextHtml(editor.getHTML());
-    if (currentNormalizedHtml === normalizedValue) return;
+    if (lastValueRef.current === editorValue && editor.innerHTML === editorValue) return;
 
-    // 仅在外部值真正变化时回填内容，避免每次输入都重置光标。
-    editor.commands.setContent(normalizedValue || '', false);
-  }, [editor, normalizedValue]);
+    // 仅在外部值真实变化时回填，避免用户输入过程中被 React 状态打断。
+    if (editor.innerHTML !== editorValue) {
+      editor.innerHTML = editorValue;
+    }
+    lastValueRef.current = editorValue;
+    setEmptyStateFromHtml(editorValue);
+    updateToolbarState();
+  }, [editorValue]);
 
-  const runCommand = (callback) => {
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    try {
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand('defaultParagraphSeparator', false, 'p');
+    } catch (error) {
+      // 低码容器内部分浏览器实现会忽略该能力，这里静默即可。
+    }
+  }, []);
+
+  const runCommand = (command, commandValue = null) => {
+    if (typeof document === 'undefined') return;
+    const editor = editorRef.current;
     if (!editor) return;
-    callback(editor);
+    editor.focus();
+    restoreSelection();
+    try {
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand(command, false, commandValue);
+    } catch (error) {
+      return;
+    }
+    saveSelection();
+    emitHtmlChange(editor.innerHTML);
+    updateToolbarState();
+  };
+
+  const toggleBlock = (tagName) => {
+    if (typeof document === 'undefined') return;
+    const editor = editorRef.current;
+    if (!editor) return;
+    const selection = typeof window !== 'undefined' && window.getSelection ? window.getSelection() : null;
+    const currentTag = selection?.anchorNode ? findClosestTagName(selection.anchorNode, editor) : '';
+    const nextValue = currentTag === tagName ? 'p' : tagName;
+    runCommand('formatBlock', nextValue);
   };
 
   const handleInsertLink = () => {
-    if (!editor) return;
-    const currentHref = editor.getAttributes('link')?.href || 'https://';
+    const editor = editorRef.current;
+    if (!editor || typeof window === 'undefined') return;
+    const selection = window.getSelection ? window.getSelection() : null;
+    const currentLink = selection?.anchorNode ? findClosestLink(selection.anchorNode, editor) : null;
+    const currentHref = String(currentLink?.getAttribute('href') || 'https://').trim() || 'https://';
     const nextUrl = window.prompt('请输入链接地址', currentHref);
     if (nextUrl === null) return;
 
     const safeUrl = String(nextUrl).trim();
     if (!safeUrl) {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      runCommand('unlink');
       return;
     }
-
-    editor.chain().focus().extendMarkRange('link').setLink({
-      href: safeUrl
-    }).run();
+    runCommand('createLink', safeUrl);
   };
 
   const clearFormatting = () => {
-    if (!editor) return;
-    editor.chain().focus().unsetAllMarks().clearNodes().run();
+    runCommand('removeFormat');
+    runCommand('unlink');
   };
 
-  const isEditorReady = !!editor;
+  const handleEnter = (event) => {
+    if (typeof document === 'undefined') return;
+    const editor = editorRef.current;
+    const selection = typeof window !== 'undefined' && window.getSelection ? window.getSelection() : null;
+    const currentTag = editor && selection?.anchorNode ? findClosestTagName(selection.anchorNode, editor) : '';
+
+    // 列表项内保留浏览器默认回车行为，避免回车后丢失 li 结构。
+    if (currentTag === 'li') {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.shiftKey) {
+      runCommand('insertLineBreak');
+      return;
+    }
+    runCommand('insertParagraph');
+  };
 
   return <div className="space-y-3">
       <style>{`
@@ -225,106 +338,88 @@ export function RichTextEditor({
           text-decoration: underline;
         }
 
-        .activity-rich-editor__editable p.is-editor-empty:first-child::before {
+        .activity-rich-editor__editable.is-empty::before {
           content: attr(data-placeholder);
-          float: left;
           color: #9ca3af;
           pointer-events: none;
-          height: 0;
+          position: absolute;
+          left: 1rem;
+          top: 0.75rem;
         }
       `}</style>
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2">
         <ToolbarButton
           title="撤销"
-          disabled={!editor?.can().chain().focus().undo().run()}
-          onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().undo().run())}
+          onClick={() => runCommand('undo')}
         >
           <Undo2 className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="重做"
-          disabled={!editor?.can().chain().focus().redo().run()}
-          onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().redo().run())}
+          onClick={() => runCommand('redo')}
         >
           <Redo2 className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="加粗"
-          isActive={editor?.isActive('bold')}
-          disabled={!isEditorReady}
-          onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().toggleBold().run())}
+          isActive={toolbarState.bold}
+          onClick={() => runCommand('bold')}
         >
           <Bold className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="斜体"
-          isActive={editor?.isActive('italic')}
-          disabled={!isEditorReady}
-          onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().toggleItalic().run())}
+          isActive={toolbarState.italic}
+          onClick={() => runCommand('italic')}
         >
           <Italic className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="下划线"
-          isActive={editor?.isActive('underline')}
-          disabled={!isEditorReady}
-          onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().toggleUnderline().run())}
+          isActive={toolbarState.underline}
+          onClick={() => runCommand('underline')}
         >
           <Underline className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="二级标题"
-          isActive={editor?.isActive('heading', {
-          level: 2
-        })}
-          disabled={!isEditorReady}
-          onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().toggleHeading({
-          level: 2
-        }).run())}
+          isActive={toolbarState.heading2}
+          onClick={() => toggleBlock('h2')}
         >
           <Heading2 className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="三级标题"
-          isActive={editor?.isActive('heading', {
-          level: 3
-        })}
-          disabled={!isEditorReady}
-          onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().toggleHeading({
-          level: 3
-        }).run())}
+          isActive={toolbarState.heading3}
+          onClick={() => toggleBlock('h3')}
         >
           <Heading3 className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="无序列表"
-          isActive={editor?.isActive('bulletList')}
-          disabled={!isEditorReady}
-          onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().toggleBulletList().run())}
+          isActive={toolbarState.bulletList}
+          onClick={() => runCommand('insertUnorderedList')}
         >
           <List className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="有序列表"
-          isActive={editor?.isActive('orderedList')}
-          disabled={!isEditorReady}
-          onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().toggleOrderedList().run())}
+          isActive={toolbarState.orderedList}
+          onClick={() => runCommand('insertOrderedList')}
         >
           <ListOrdered className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="引用"
-          isActive={editor?.isActive('blockquote')}
-          disabled={!isEditorReady}
-          onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().toggleBlockquote().run())}
+          isActive={toolbarState.blockquote}
+          onClick={() => toggleBlock('blockquote')}
         >
           <Quote className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="插入链接"
-          isActive={editor?.isActive('link')}
-          disabled={!isEditorReady}
+          isActive={toolbarState.link}
           onClick={handleInsertLink}
         >
           <Link className="h-4 w-4" />
@@ -332,15 +427,14 @@ export function RichTextEditor({
         <ToolbarButton
           title="取消链接"
           isActive={false}
-          disabled={!editor?.isActive('link')}
-          onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().extendMarkRange('link').unsetLink().run())}
+          disabled={!toolbarState.link}
+          onClick={() => runCommand('unlink')}
         >
           <Unlink className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
           title="清除格式"
           isActive={false}
-          disabled={!isEditorReady}
           onClick={clearFormatting}
         >
           <Eraser className="h-4 w-4" />
@@ -351,16 +445,11 @@ export function RichTextEditor({
               key={color}
               type="button"
               title={`文字颜色 ${color}`}
-              disabled={!isEditorReady}
               onMouseDown={(event) => {
               event.preventDefault();
             }}
-              onClick={() => runCommand((currentEditor) => currentEditor.chain().focus().setColor(color).run())}
-              className={`h-6 w-6 rounded-full border border-white shadow ring-1 transition-opacity ${
-              isEditorReady ? 'opacity-100' : 'cursor-not-allowed opacity-50'
-            } ${editor?.isActive('textStyle', {
-              color
-            }) ? 'ring-2 ring-blue-500 ring-offset-2' : 'ring-gray-200'}`}
+              onClick={() => runCommand('foreColor', color)}
+              className="h-6 w-6 rounded-full border border-white shadow ring-1 ring-gray-200 transition-opacity"
               style={{
               backgroundColor: color
             }}
@@ -368,10 +457,50 @@ export function RichTextEditor({
         </div>
       </div>
 
-      <EditorContent editor={editor} />
+      <div
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        data-placeholder={placeholder}
+        className={`activity-rich-editor__editable relative ${isEmpty ? 'is-empty' : ''}`}
+        style={{
+        minHeight
+      }}
+        onFocus={updateToolbarState}
+        onInput={() => {
+        saveSelection();
+        if (!editorRef.current) return;
+        emitHtmlChange(editorRef.current.innerHTML);
+        updateToolbarState();
+      }}
+        onPaste={() => {
+        window.setTimeout(() => {
+          normalizeEditorContent('sanitize');
+          saveSelection();
+        }, 0);
+      }}
+        onBlur={() => {
+        saveSelection();
+        normalizeEditorContent('normalize');
+      }}
+        onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          handleEnter(event);
+          return;
+        }
+      }}
+        onKeyUp={() => {
+        saveSelection();
+        updateToolbarState();
+      }}
+        onMouseUp={() => {
+        saveSelection();
+        updateToolbarState();
+      }}
+      />
 
       <div className="text-xs text-gray-500">
-        支持标题、加粗、列表、引用、链接和文字颜色。活动列表摘要会根据这里的内容自动生成。
+        支持标题、加粗、列表、引用、链接和文字颜色。回车会保留段落结构，活动列表摘要会根据这里的内容自动生成。
       </div>
     </div>;
 }
