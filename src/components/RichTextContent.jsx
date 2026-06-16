@@ -1,6 +1,10 @@
 // @ts-ignore;
 import React from 'react';
-import { getRichTextDisplayHtml } from './richText';
+import {
+  extractCloudRichTextImageIds,
+  getRichTextDisplayHtml,
+  replaceRichTextImageUrls
+} from './richText';
 
 export function RichTextContent({
   html,
@@ -9,8 +13,55 @@ export function RichTextContent({
 }) {
   // 查看态优先展示富文本 HTML，旧数据只有纯文本时自动转换为段落结构。
   const content = React.useMemo(() => getRichTextDisplayHtml(html, fallbackText), [html, fallbackText]);
+  const [resolvedContent, setResolvedContent] = React.useState(content);
 
-  if (!content) return null;
+  React.useEffect(() => {
+    let cancelled = false;
+    setResolvedContent(content);
+
+    if (!content || typeof window === 'undefined') {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const cloudImageIds = extractCloudRichTextImageIds(content);
+    if (cloudImageIds.length === 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    (async () => {
+      try {
+        const tcb = await window.$w?.cloud?.getCloudInstance();
+        if (!tcb) return;
+
+        const result = await tcb.getTempFileURL({
+          fileList: cloudImageIds
+        });
+
+        const urlMap = {};
+        (result?.fileList || []).forEach((item) => {
+          const fileID = String(item?.fileID || '').trim();
+          const tempFileURL = String(item?.tempFileURL || '').trim();
+          if (!fileID || !tempFileURL) return;
+          urlMap[fileID] = tempFileURL;
+        });
+
+        if (cancelled || Object.keys(urlMap).length === 0) return;
+        setResolvedContent(replaceRichTextImageUrls(content, urlMap));
+      } catch (error) {
+        console.error('解析富文本图片临时链接失败:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [content]);
+
+  if (!resolvedContent) return null;
 
   return <>
       <style>{`
@@ -87,7 +138,7 @@ export function RichTextContent({
         }
       `}</style>
       <div className={`activity-rich-text ${className}`.trim()} dangerouslySetInnerHTML={{
-      __html: content
+      __html: resolvedContent
     }} />
     </>;
 }

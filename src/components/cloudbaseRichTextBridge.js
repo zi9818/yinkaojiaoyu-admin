@@ -1,6 +1,6 @@
 import { getRichTextDisplayHtml, normalizeRichTextHtml } from './richText';
 
-// CloudBase JSX 组件的插槽配置不在仓库源码里，这里统一约定官方富文本组件的实例 ID。
+// 旧的 CloudBase 官方富文本桥接逻辑已不再作为主方案使用，保留仅为兼容历史代码和验收脚本。
 export const ACTIVITY_DESC_EDITOR_COMPONENT_ID = 'activityDescRichEditor';
 export const ACTIVITY_DESC_PREVIEW_COMPONENT_ID = 'activityDescRichPreview';
 

@@ -11,12 +11,21 @@ import {
   ListOrdered,
   Quote,
   Link,
-  Unlink,
+  Image as ImageIcon,
   Eraser,
   Undo2,
-  Redo2
+  Redo2,
+  LoaderCircle,
+  AlertCircle
 } from 'lucide-react';
-import { normalizeRichTextHtml, sanitizeRichTextHtml } from './richText';
+import {
+  extractCloudRichTextImageIds,
+  normalizeRichTextHtml,
+  replaceRichTextImageUrls
+} from './richText';
+
+const QUILL_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js';
+const QUILL_STYLE_URL = 'https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css';
 
 const COLOR_SWATCHES = [
   '#111827',
@@ -27,49 +36,96 @@ const COLOR_SWATCHES = [
   '#7c3aed'
 ];
 
-function ToolbarButton({
-  title,
-  onClick,
-  children,
-  isActive = false,
-  disabled = false
-}) {
-  return <button
-      type="button"
-      title={title}
-      disabled={disabled}
-      onMouseDown={(event) => {
-      event.preventDefault();
-    }}
-      onClick={onClick}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-md border text-gray-700 transition-colors ${
-      isActive ? 'border-blue-500 bg-blue-50 text-blue-600' : 'border-gray-200 bg-white hover:bg-gray-50'
-    } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
-    >
-      {children}
-    </button>;
+let quillAssetsPromise = null;
+
+function ensureStyleSheet(url) {
+  if (typeof document === 'undefined') return;
+  const existed = document.querySelector(`link[data-activity-richtext-style="${url}"]`);
+  if (existed) return;
+
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = url;
+  link.setAttribute('data-activity-richtext-style', url);
+  document.head.appendChild(link);
 }
 
-function findClosestTagName(node, root) {
-  let current = node && node.nodeType === 1 ? node : node?.parentNode;
-  while (current && current !== root) {
-    if (current.tagName) {
-      return String(current.tagName).toLowerCase();
-    }
-    current = current.parentNode;
+function ensureScript(url) {
+  if (typeof document === 'undefined') {
+    return Promise.reject(new Error('当前环境不支持动态加载 Quill 脚本'));
   }
-  return '';
+
+  const win = window;
+  if (win.Quill) {
+    return Promise.resolve(win.Quill);
+  }
+
+  return new Promise((resolve, reject) => {
+    const existed = document.querySelector(`script[data-activity-richtext-script="${url}"]`);
+    if (existed) {
+      existed.addEventListener('load', () => resolve(win.Quill));
+      existed.addEventListener('error', () => reject(new Error(`加载 Quill 脚本失败：${url}`)));
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = url;
+    script.async = true;
+    script.setAttribute('data-activity-richtext-script', url);
+    script.onload = () => {
+      if (win.Quill) {
+        resolve(win.Quill);
+        return;
+      }
+      reject(new Error('Quill 脚本已加载，但窗口对象上没有 Quill'));
+    };
+    script.onerror = () => {
+      reject(new Error(`加载 Quill 脚本失败：${url}`));
+    };
+    document.body.appendChild(script);
+  });
 }
 
-function findClosestLink(node, root) {
-  let current = node && node.nodeType === 1 ? node : node?.parentNode;
-  while (current && current !== root) {
-    if (String(current.tagName || '').toLowerCase() === 'a') {
-      return current;
-    }
-    current = current.parentNode;
+function ensureQuillAssets() {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('当前环境不支持加载 Quill 编辑器'));
   }
-  return null;
+
+  if (window.Quill) {
+    return Promise.resolve(window.Quill);
+  }
+
+  if (!quillAssetsPromise) {
+    quillAssetsPromise = Promise.resolve()
+      .then(() => {
+        ensureStyleSheet(QUILL_STYLE_URL);
+        return ensureScript(QUILL_SCRIPT_URL);
+      })
+      .catch((error) => {
+        quillAssetsPromise = null;
+        throw error;
+      });
+  }
+
+  return quillAssetsPromise;
+}
+
+function buildUploadCloudPath(file) {
+  const timestamp = Date.now();
+  const randomStr = Math.random().toString(36).slice(2, 8);
+  const extension = String(file?.name || '').split('.').pop() || 'png';
+  return `richtext/${timestamp}_${randomStr}.${extension}`;
+}
+
+function createTempUrlMap(fileList) {
+  const urlMap = {};
+  (Array.isArray(fileList) ? fileList : []).forEach((item) => {
+    const fileID = String(item?.fileID || '').trim();
+    const tempFileURL = String(item?.tempFileURL || '').trim();
+    if (!fileID || !tempFileURL) return;
+    urlMap[fileID] = tempFileURL;
+  });
+  return urlMap;
 }
 
 export function RichTextEditor({
@@ -78,262 +134,408 @@ export function RichTextEditor({
   placeholder = '请输入活动描述',
   minHeight = 240
 }) {
-  const editorRef = useRef(null);
-  const selectionRef = useRef(null);
-  const lastValueRef = useRef('');
-  const [toolbarState, setToolbarState] = useState({
-    bold: false,
-    italic: false,
-    underline: false,
-    bulletList: false,
-    orderedList: false,
-    heading2: false,
-    heading3: false,
-    blockquote: false,
-    link: false
-  });
+  const editorHostRef = useRef(null);
+  const toolbarRef = useRef(null);
+  const quillRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const onChangeRef = useRef(onChange);
+  const isSyncingRef = useRef(false);
+  const reverseImageMapRef = useRef({});
+  const textChangeHandlerRef = useRef(null);
+  const [isReady, setIsReady] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [isEmpty, setIsEmpty] = useState(!normalizeRichTextHtml(value));
+  const editorValue = useMemo(() => normalizeRichTextHtml(value), [value]);
 
-  // 编辑态尽量保留浏览器当前生成的 HTML，避免每次输入都被强行规范化后打断光标。
-  const editorValue = useMemo(() => sanitizeRichTextHtml(value), [value]);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   const setEmptyStateFromHtml = (html) => {
     setIsEmpty(!normalizeRichTextHtml(html));
   };
 
-  const saveSelection = () => {
-    if (typeof window === 'undefined') return;
-    const editor = editorRef.current;
-    const selection = window.getSelection ? window.getSelection() : null;
-    if (!editor || !selection || selection.rangeCount === 0) return;
-    const range = selection.getRangeAt(0);
-    if (!editor.contains(range.commonAncestorContainer)) return;
-    selectionRef.current = range.cloneRange();
-  };
-
-  const restoreSelection = () => {
-    if (typeof window === 'undefined') return;
-    const selection = window.getSelection ? window.getSelection() : null;
-    if (!selection || !selectionRef.current) return;
-    selection.removeAllRanges();
-    selection.addRange(selectionRef.current);
-  };
-
-  const updateToolbarState = () => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    const editor = editorRef.current;
-    const selection = window.getSelection ? window.getSelection() : null;
-    const anchorNode = selection?.anchorNode || null;
-    const anchorInsideEditor = !!(editor && anchorNode && editor.contains(anchorNode));
-
-    const queryState = (command) => {
-      if (!anchorInsideEditor) return false;
-      try {
-        return !!document.queryCommandState(command);
-      } catch (error) {
-        return false;
-      }
+  const registerImageTempUrls = (urlMap) => {
+    const nextMap = {
+      ...reverseImageMapRef.current
     };
 
-    const blockTagName = anchorInsideEditor ? findClosestTagName(anchorNode, editor) : '';
-    setToolbarState({
-      bold: queryState('bold'),
-      italic: queryState('italic'),
-      underline: queryState('underline'),
-      bulletList: queryState('insertUnorderedList'),
-      orderedList: queryState('insertOrderedList'),
-      heading2: blockTagName === 'h2',
-      heading3: blockTagName === 'h3',
-      blockquote: blockTagName === 'blockquote',
-      link: !!(anchorInsideEditor && findClosestLink(anchorNode, editor))
+    Object.entries(urlMap || {}).forEach(([fileID, tempUrl]) => {
+      if (!fileID || !tempUrl) return;
+      nextMap[String(tempUrl)] = String(fileID);
     });
+
+    reverseImageMapRef.current = nextMap;
   };
 
-  const emitHtmlChange = (nextHtml) => {
-    const html = String(nextHtml || '');
-    lastValueRef.current = html;
-    setEmptyStateFromHtml(html);
-    onChange?.(html);
+  const restoreCloudImageFileIds = (html) => {
+    let nextHtml = String(html || '');
+    const entries = Object.entries(reverseImageMapRef.current || {}).sort((left, right) => right[0].length - left[0].length);
+    entries.forEach(([tempUrl, fileID]) => {
+      if (!tempUrl || !fileID) return;
+      nextHtml = nextHtml.split(tempUrl).join(fileID);
+    });
+    return nextHtml;
   };
 
-  const syncEditorHtml = (nextHtml) => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    if (editor.innerHTML !== nextHtml) {
-      editor.innerHTML = nextHtml;
+  const getCloudInstance = async () => {
+    const tcb = await window.$w?.cloud?.getCloudInstance();
+    if (!tcb) {
+      throw new Error('无法获取云开发实例');
     }
-    emitHtmlChange(nextHtml);
+    return tcb;
   };
 
-  const normalizeEditorContent = (mode = 'normalize') => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const rawHtml = editor.innerHTML;
-    const nextHtml = mode === 'sanitize'
-      ? sanitizeRichTextHtml(rawHtml)
-      : normalizeRichTextHtml(rawHtml);
-    syncEditorHtml(nextHtml);
-    updateToolbarState();
+  const resolveCloudImageUrlMap = async (fileIDs) => {
+    const safeFileIDs = Array.from(new Set((Array.isArray(fileIDs) ? fileIDs : []).map((item) => String(item || '').trim()).filter(Boolean)));
+    if (safeFileIDs.length === 0) return {};
+
+    const tcb = await getCloudInstance();
+    const result = await tcb.getTempFileURL({
+      fileList: safeFileIDs
+    });
+    const urlMap = createTempUrlMap(result?.fileList || []);
+    registerImageTempUrls(urlMap);
+    return urlMap;
   };
 
-  useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    if (lastValueRef.current === editorValue && editor.innerHTML === editorValue) return;
+  const resolveEditorDisplayHtml = async (rawHtml) => {
+    const normalizedHtml = normalizeRichTextHtml(rawHtml);
+    if (!normalizedHtml) return '';
 
-    // 仅在外部值真实变化时回填，避免用户输入过程中被 React 状态打断。
-    if (editor.innerHTML !== editorValue) {
-      editor.innerHTML = editorValue;
+    const cloudImageIds = extractCloudRichTextImageIds(normalizedHtml);
+    if (cloudImageIds.length === 0) {
+      return normalizedHtml;
     }
-    lastValueRef.current = editorValue;
-    setEmptyStateFromHtml(editorValue);
-    updateToolbarState();
-  }, [editorValue]);
 
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
     try {
-      document.execCommand('styleWithCSS', false, true);
-      document.execCommand('defaultParagraphSeparator', false, 'p');
+      const urlMap = await resolveCloudImageUrlMap(cloudImageIds);
+      if (Object.keys(urlMap).length === 0) {
+        return normalizedHtml;
+      }
+      return replaceRichTextImageUrls(normalizedHtml, urlMap);
     } catch (error) {
-      // 低码容器内部分浏览器实现会忽略该能力，这里静默即可。
+      console.error('解析编辑态富文本图片临时链接失败:', error);
+      return normalizedHtml;
     }
+  };
+
+  const exportSemanticHtml = (editorInstance) => {
+    const quill = editorInstance || quillRef.current;
+    if (!quill) return '';
+
+    const rawHtml = typeof quill.getSemanticHTML === 'function'
+      ? quill.getSemanticHTML()
+      : quill.root?.innerHTML || '';
+
+    return normalizeRichTextHtml(restoreCloudImageFileIds(rawHtml));
+  };
+
+  const applyEditorHtml = async (rawHtml, options = {}) => {
+    const quill = quillRef.current;
+    if (!quill) return;
+
+    const displayHtml = await resolveEditorDisplayHtml(rawHtml);
+    isSyncingRef.current = true;
+    quill.setText('');
+    if (displayHtml) {
+      quill.clipboard.dangerouslyPasteHTML(displayHtml);
+    }
+    if (options.clearHistory) {
+      quill.history.clear();
+    }
+    isSyncingRef.current = false;
+
+    const normalizedHtml = exportSemanticHtml(quill);
+    setEmptyStateFromHtml(normalizedHtml);
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      setErrorMessage('');
+
+      try {
+        const Quill = await ensureQuillAssets();
+        if (cancelled || quillRef.current || !editorHostRef.current || !toolbarRef.current) return;
+
+        const quill = new Quill(editorHostRef.current, {
+          theme: 'snow',
+          placeholder,
+          modules: {
+            toolbar: {
+              container: toolbarRef.current,
+              handlers: {
+                undo() {
+                  this.quill.history.undo();
+                },
+                redo() {
+                  this.quill.history.redo();
+                },
+                image() {
+                  fileInputRef.current?.click();
+                }
+              }
+            },
+            history: {
+              delay: 300,
+              maxStack: 100,
+              userOnly: true
+            }
+          }
+        });
+
+        quillRef.current = quill;
+        textChangeHandlerRef.current = () => {
+          if (isSyncingRef.current) return;
+          const nextHtml = exportSemanticHtml(quill);
+          setEmptyStateFromHtml(nextHtml);
+          onChangeRef.current?.(nextHtml);
+        };
+        quill.on('text-change', textChangeHandlerRef.current);
+
+        await applyEditorHtml(editorValue, {
+          clearHistory: true
+        });
+        if (cancelled) return;
+
+        setIsReady(true);
+      } catch (error) {
+        if (cancelled) return;
+        console.error('初始化 Quill 编辑器失败:', error);
+        setErrorMessage(error?.message || 'Quill 编辑器初始化失败，请检查 CDN 访问是否正常');
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (quillRef.current && textChangeHandlerRef.current) {
+        quillRef.current.off('text-change', textChangeHandlerRef.current);
+      }
+      quillRef.current = null;
+      textChangeHandlerRef.current = null;
+    };
   }, []);
 
-  const runCommand = (command, commandValue = null) => {
-    if (typeof document === 'undefined') return;
-    const editor = editorRef.current;
-    if (!editor) return;
-    editor.focus();
-    restoreSelection();
+  useEffect(() => {
+    if (!isReady) {
+      setEmptyStateFromHtml(editorValue);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      const quill = quillRef.current;
+      if (!quill) return;
+
+      const currentHtml = exportSemanticHtml(quill);
+      if (currentHtml === editorValue) {
+        setEmptyStateFromHtml(editorValue);
+        return;
+      }
+
+      await applyEditorHtml(editorValue, {
+        clearHistory: true
+      });
+      if (!cancelled) {
+        setEmptyStateFromHtml(editorValue);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editorValue, isReady]);
+
+  const handleRichTextImageSelect = async (event) => {
+    const file = Array.from(event.target.files || [])[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      window.alert('请选择图片文件');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      window.alert('富文本图片大小不能超过 5MB');
+      event.target.value = '';
+      return;
+    }
+
+    setUploading(true);
     try {
-      document.execCommand('styleWithCSS', false, true);
-      document.execCommand(command, false, commandValue);
+      const tcb = await getCloudInstance();
+      const uploadResult = await tcb.uploadFile({
+        cloudPath: buildUploadCloudPath(file),
+        filePath: file
+      });
+
+      const fileID = String(uploadResult?.fileID || '').trim();
+      if (!fileID) {
+        throw new Error('富文本图片上传成功，但未返回 fileID');
+      }
+
+      const urlMap = await resolveCloudImageUrlMap([fileID]);
+      const previewUrl = urlMap[fileID];
+      if (!previewUrl) {
+        throw new Error('富文本图片上传成功，但未获取到预览地址');
+      }
+
+      const quill = quillRef.current;
+      if (!quill) return;
+
+      const range = quill.getSelection(true);
+      const insertIndex = range ? range.index : quill.getLength();
+      quill.insertEmbed(insertIndex, 'image', previewUrl, 'user');
+      quill.setSelection(insertIndex + 1, 0, 'silent');
+
+      const nextHtml = exportSemanticHtml(quill);
+      setEmptyStateFromHtml(nextHtml);
+      onChangeRef.current?.(nextHtml);
     } catch (error) {
-      return;
+      console.error('上传富文本图片失败:', error);
+      window.alert(`上传富文本图片失败：${error?.message || '请稍后重试'}`);
+    } finally {
+      setUploading(false);
+      event.target.value = '';
     }
-    saveSelection();
-    emitHtmlChange(editor.innerHTML);
-    updateToolbarState();
-  };
-
-  const toggleBlock = (tagName) => {
-    if (typeof document === 'undefined') return;
-    const editor = editorRef.current;
-    if (!editor) return;
-    const selection = typeof window !== 'undefined' && window.getSelection ? window.getSelection() : null;
-    const currentTag = selection?.anchorNode ? findClosestTagName(selection.anchorNode, editor) : '';
-    const nextValue = currentTag === tagName ? 'p' : tagName;
-    runCommand('formatBlock', nextValue);
-  };
-
-  const handleInsertLink = () => {
-    const editor = editorRef.current;
-    if (!editor || typeof window === 'undefined') return;
-    const selection = window.getSelection ? window.getSelection() : null;
-    const currentLink = selection?.anchorNode ? findClosestLink(selection.anchorNode, editor) : null;
-    const currentHref = String(currentLink?.getAttribute('href') || 'https://').trim() || 'https://';
-    const nextUrl = window.prompt('请输入链接地址', currentHref);
-    if (nextUrl === null) return;
-
-    const safeUrl = String(nextUrl).trim();
-    if (!safeUrl) {
-      runCommand('unlink');
-      return;
-    }
-    runCommand('createLink', safeUrl);
-  };
-
-  const clearFormatting = () => {
-    runCommand('removeFormat');
-    runCommand('unlink');
-  };
-
-  const handleEnter = (event) => {
-    if (typeof document === 'undefined') return;
-    const editor = editorRef.current;
-    const selection = typeof window !== 'undefined' && window.getSelection ? window.getSelection() : null;
-    const currentTag = editor && selection?.anchorNode ? findClosestTagName(selection.anchorNode, editor) : '';
-
-    // 列表项内保留浏览器默认回车行为，避免回车后丢失 li 结构。
-    if (currentTag === 'li') {
-      return;
-    }
-
-    event.preventDefault();
-    if (event.shiftKey) {
-      runCommand('insertLineBreak');
-      return;
-    }
-    runCommand('insertParagraph');
   };
 
   return <div className="space-y-3">
       <style>{`
-        .activity-rich-editor__editable {
-          width: 100%;
-          border-radius: 0.5rem;
+        .activity-quill-toolbar.ql-toolbar.ql-snow {
           border: 1px solid #d1d5db;
+          border-radius: 0.5rem 0.5rem 0 0;
+          background: #f9fafb;
+          padding: 0.5rem;
+        }
+
+        .activity-quill-toolbar.ql-toolbar .ql-formats {
+          margin-right: 10px;
+        }
+
+        .activity-quill-toolbar.ql-toolbar button,
+        .activity-quill-toolbar.ql-toolbar .ql-picker {
+          height: 2.25rem;
+        }
+
+        .activity-quill-toolbar.ql-toolbar button {
+          width: 2.25rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 0.375rem;
+        }
+
+        .activity-quill-toolbar.ql-toolbar button:hover {
+          background: #eff6ff;
+        }
+
+        .activity-quill-toolbar .activity-quill-toolbar__heading {
+          width: auto !important;
+          min-width: 2.5rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .activity-quill-toolbar .ql-picker.ql-color {
+          width: 2.75rem;
+        }
+
+        .activity-quill-toolbar .ql-picker.ql-color .ql-picker-label,
+        .activity-quill-toolbar .ql-picker.ql-color .ql-picker-item {
+          padding: 2px;
+        }
+
+        .activity-quill-editor.ql-container.ql-snow {
+          border: 1px solid #d1d5db;
+          border-top: none;
+          border-radius: 0 0 0.5rem 0.5rem;
           background: #ffffff;
+        }
+
+        .activity-quill-editor .ql-editor {
+          min-height: ${Math.max(minHeight, 240)}px;
           padding: 0.75rem 1rem;
           color: #111827;
           font-size: 0.875rem;
           line-height: 1.8;
-          outline: none;
-          white-space: normal;
           word-break: break-word;
         }
 
-        .activity-rich-editor__editable:focus {
+        .activity-quill-editor .ql-editor.ql-blank::before {
+          left: 1rem;
+          right: 1rem;
+          color: #9ca3af;
+          font-style: normal;
+        }
+
+        .activity-quill-editor .ql-editor:focus {
+          outline: none;
+        }
+
+        .activity-quill-editor.ql-container.ql-snow:focus-within {
           border-color: #3b82f6;
           box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
         }
 
-        .activity-rich-editor__editable p,
-        .activity-rich-editor__editable div {
-          margin: 0 0 12px;
-        }
-
-        .activity-rich-editor__editable h1 {
+        .activity-quill-editor .ql-editor h1 {
           margin: 0 0 14px;
           font-size: 24px;
           font-weight: 700;
           line-height: 1.4;
         }
 
-        .activity-rich-editor__editable h2 {
+        .activity-quill-editor .ql-editor h2 {
           margin: 0 0 14px;
           font-size: 20px;
           font-weight: 700;
           line-height: 1.5;
         }
 
-        .activity-rich-editor__editable h3 {
+        .activity-quill-editor .ql-editor h3 {
           margin: 0 0 12px;
           font-size: 18px;
           font-weight: 600;
           line-height: 1.5;
         }
 
-        .activity-rich-editor__editable ul,
-        .activity-rich-editor__editable ol {
+        .activity-quill-editor .ql-editor p {
+          margin: 0 0 12px;
+        }
+
+        .activity-quill-editor .ql-editor ul,
+        .activity-quill-editor .ql-editor ol {
           margin: 0 0 12px;
           padding-left: 20px;
         }
 
-        .activity-rich-editor__editable ul {
+        .activity-quill-editor .ql-editor ul {
           list-style: disc;
         }
 
-        .activity-rich-editor__editable ol {
+        .activity-quill-editor .ql-editor ol {
           list-style: decimal;
         }
 
-        .activity-rich-editor__editable li {
+        .activity-quill-editor .ql-editor li {
           margin-bottom: 8px;
         }
 
-        .activity-rich-editor__editable blockquote {
+        .activity-quill-editor .ql-editor blockquote {
           margin: 0 0 12px;
           border-left: 4px solid #d1d5db;
           background: #f9fafb;
@@ -341,174 +543,110 @@ export function RichTextEditor({
           color: #4b5563;
         }
 
-        .activity-rich-editor__editable a {
+        .activity-quill-editor .ql-editor a {
           color: #2563eb;
           text-decoration: underline;
         }
 
-        .activity-rich-editor__editable.is-empty::before {
-          content: attr(data-placeholder);
-          color: #9ca3af;
-          pointer-events: none;
-          position: absolute;
-          left: 1rem;
-          top: 0.75rem;
+        .activity-quill-editor .ql-editor img {
+          display: block;
+          max-width: 100%;
+          height: auto;
+          margin: 12px 0;
+          border-radius: 12px;
         }
       `}</style>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-2">
-        <ToolbarButton
-          title="撤销"
-          onClick={() => runCommand('undo')}
-        >
-          <Undo2 className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="重做"
-          onClick={() => runCommand('redo')}
-        >
-          <Redo2 className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="加粗"
-          isActive={toolbarState.bold}
-          onClick={() => runCommand('bold')}
-        >
-          <Bold className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="斜体"
-          isActive={toolbarState.italic}
-          onClick={() => runCommand('italic')}
-        >
-          <Italic className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="下划线"
-          isActive={toolbarState.underline}
-          onClick={() => runCommand('underline')}
-        >
-          <Underline className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="二级标题"
-          isActive={toolbarState.heading2}
-          onClick={() => toggleBlock('h2')}
-        >
-          <Heading2 className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="三级标题"
-          isActive={toolbarState.heading3}
-          onClick={() => toggleBlock('h3')}
-        >
-          <Heading3 className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="无序列表"
-          isActive={toolbarState.bulletList}
-          onClick={() => runCommand('insertUnorderedList')}
-        >
-          <List className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="有序列表"
-          isActive={toolbarState.orderedList}
-          onClick={() => runCommand('insertOrderedList')}
-        >
-          <ListOrdered className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="引用"
-          isActive={toolbarState.blockquote}
-          onClick={() => toggleBlock('blockquote')}
-        >
-          <Quote className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="插入链接"
-          isActive={toolbarState.link}
-          onClick={handleInsertLink}
-        >
-          <Link className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="取消链接"
-          isActive={false}
-          disabled={!toolbarState.link}
-          onClick={() => runCommand('unlink')}
-        >
-          <Unlink className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          title="清除格式"
-          isActive={false}
-          onClick={clearFormatting}
-        >
-          <Eraser className="h-4 w-4" />
-        </ToolbarButton>
+      {loading ? <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+          <span>正在加载 Quill 富文本编辑器...</span>
+        </div> : null}
 
-        <div className="ml-2 flex items-center gap-2">
-          {COLOR_SWATCHES.map((color) => <button
-              key={color}
-              type="button"
-              title={`文字颜色 ${color}`}
-              onMouseDown={(event) => {
-              event.preventDefault();
-            }}
-              onClick={() => runCommand('foreColor', color)}
-              className="h-6 w-6 rounded-full border border-white shadow ring-1 ring-gray-200 transition-opacity"
-              style={{
-              backgroundColor: color
-            }}
-            />)}
-        </div>
+      {errorMessage ? <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="flex items-center gap-2 font-medium">
+            <AlertCircle className="h-4 w-4" />
+            <span>Quill 富文本编辑器初始化失败</span>
+          </div>
+          <div className="mt-2 text-xs leading-6 text-red-600">
+            {errorMessage}。请确认当前 CloudBase 页面可以访问 <code>jsdelivr</code> CDN 资源。
+          </div>
+        </div> : null}
+
+      <div ref={toolbarRef} className="activity-quill-toolbar">
+        <span className="ql-formats">
+          <button type="button" className="ql-undo" title="撤销">
+            <Undo2 className="h-4 w-4" />
+          </button>
+          <button type="button" className="ql-redo" title="重做">
+            <Redo2 className="h-4 w-4" />
+          </button>
+        </span>
+
+        <span className="ql-formats">
+          <button type="button" className="ql-bold" title="加粗">
+            <Bold className="h-4 w-4" />
+          </button>
+          <button type="button" className="ql-italic" title="斜体">
+            <Italic className="h-4 w-4" />
+          </button>
+          <button type="button" className="ql-underline" title="下划线">
+            <Underline className="h-4 w-4" />
+          </button>
+        </span>
+
+        <span className="ql-formats">
+          <button type="button" className="ql-header activity-quill-toolbar__heading" value="2" title="二级标题">
+            <Heading2 className="h-4 w-4" />
+          </button>
+          <button type="button" className="ql-header activity-quill-toolbar__heading" value="3" title="三级标题">
+            <Heading3 className="h-4 w-4" />
+          </button>
+        </span>
+
+        <span className="ql-formats">
+          <button type="button" className="ql-list" value="bullet" title="无序列表">
+            <List className="h-4 w-4" />
+          </button>
+          <button type="button" className="ql-list" value="ordered" title="有序列表">
+            <ListOrdered className="h-4 w-4" />
+          </button>
+          <button type="button" className="ql-blockquote" title="引用">
+            <Quote className="h-4 w-4" />
+          </button>
+        </span>
+
+        <span className="ql-formats">
+          <button type="button" className="ql-link" title="插入链接">
+            <Link className="h-4 w-4" />
+          </button>
+          <button type="button" className="ql-image" title={uploading ? '图片上传中...' : '上传图片'}>
+            <ImageIcon className="h-4 w-4" />
+          </button>
+          <button type="button" className="ql-clean" title="清除格式">
+            <Eraser className="h-4 w-4" />
+          </button>
+        </span>
+
+        <span className="ql-formats">
+          <select className="ql-color" defaultValue="" title="文字颜色">
+            <option value="" />
+            {COLOR_SWATCHES.map((color) => <option key={color} value={color} />)}
+          </select>
+        </span>
       </div>
 
-      <div
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        data-placeholder={placeholder}
-        className={`activity-rich-editor__editable relative ${isEmpty ? 'is-empty' : ''}`}
-        style={{
-        minHeight
-      }}
-        onFocus={updateToolbarState}
-        onInput={() => {
-        saveSelection();
-        if (!editorRef.current) return;
-        emitHtmlChange(editorRef.current.innerHTML);
-        updateToolbarState();
-      }}
-        onPaste={() => {
-        window.setTimeout(() => {
-          normalizeEditorContent('sanitize');
-          saveSelection();
-        }, 0);
-      }}
-        onBlur={() => {
-        saveSelection();
-        normalizeEditorContent('normalize');
-      }}
-        onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          handleEnter(event);
-          return;
-        }
-      }}
-        onKeyUp={() => {
-        saveSelection();
-        updateToolbarState();
-      }}
-        onMouseUp={() => {
-        saveSelection();
-        updateToolbarState();
-      }}
+      <div ref={editorHostRef} className={`activity-quill-editor ${isEmpty ? 'is-empty' : ''}`} />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept="image/*"
+        onChange={handleRichTextImageSelect}
       />
 
       <div className="text-xs text-gray-500">
-        支持标题、加粗、列表、引用、链接和文字颜色。回车会保留段落结构，活动列表摘要会根据这里的内容自动生成。
+        当前使用 Quill CDN 富文本编辑器，支持标题、列表、引用、链接、颜色和图片上传；保存时会直接写入 <code>descRich</code>，后台查看页和小程序会共用同一份 HTML。
       </div>
     </div>;
 }

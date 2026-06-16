@@ -66,6 +66,8 @@ const DEFAULT_STYLES = {
   }
 };
 
+const RICH_TEXT_IMAGE_SRC_REGEXP = /<img\b([^>]*?)\bsrc=(['"])(.*?)\2([^>]*)>/gi;
+
 const ALLOWED_TAGS = new Set([
   'P',
   'BR',
@@ -380,4 +382,35 @@ export function getRichTextDisplayHtml(descRich, desc) {
   const richHtml = normalizeRichTextHtml(descRich);
   if (richHtml) return richHtml;
   return convertPlainTextToRichText(desc);
+}
+
+export function extractCloudRichTextImageIds(html) {
+  const raw = String(html || '').trim();
+  if (!raw) return [];
+
+  const ids = [];
+  let match = null;
+  while ((match = RICH_TEXT_IMAGE_SRC_REGEXP.exec(raw)) !== null) {
+    const src = String(match[3] || '').trim();
+    if (!src) continue;
+    if (!src.startsWith('cloud://') && !src.startsWith('tcb://')) continue;
+    if (!ids.includes(src)) {
+      ids.push(src);
+    }
+  }
+  RICH_TEXT_IMAGE_SRC_REGEXP.lastIndex = 0;
+  return ids;
+}
+
+export function replaceRichTextImageUrls(html, urlMap) {
+  const raw = String(html || '');
+  if (!raw) return '';
+
+  const safeUrlMap = urlMap || {};
+  return raw.replace(RICH_TEXT_IMAGE_SRC_REGEXP, (match, before = '', quote = '"', src = '', after = '') => {
+    const normalizedSrc = String(src || '').trim();
+    const nextSrc = safeUrlMap[normalizedSrc];
+    if (!nextSrc) return match;
+    return `<img${before}src=${quote}${nextSrc}${quote}${after}>`;
+  });
 }

@@ -156,7 +156,7 @@ function createPreviewHtml({ sampleRichHtml, adminPreviewHtml, miniPreviewHtml, 
     <section class="grid">
       <article class="panel">
         <h2>原始富文本样例</h2>
-        <p class="note">用于模拟 CloudBase 官方 <code>WdRichText</code> 保存到 <code>descRich</code> 的 HTML。</p>
+        <p class="note">用于模拟 Quill 编辑器保存到 <code>descRich</code> 的 HTML。</p>
         <pre>${escapeHtml(sampleRichHtml)}</pre>
       </article>
       <article class="panel">
@@ -243,9 +243,15 @@ function main() {
   const adminPageSource = fs.readFileSync(path.join(repoRoot, 'src', 'pages', 'activity-management.jsx'), 'utf8');
   const adminFormSource = fs.readFileSync(path.join(repoRoot, 'src', 'components', 'ActivityForm.jsx'), 'utf8');
   const adminDialogSource = fs.readFileSync(path.join(repoRoot, 'src', 'components', 'ActivityDialogs.jsx'), 'utf8');
+  const adminEditorSource = fs.readFileSync(path.join(repoRoot, 'src', 'components', 'RichTextEditor.jsx'), 'utf8');
+  const adminContentSource = fs.readFileSync(path.join(repoRoot, 'src', 'components', 'RichTextContent.jsx'), 'utf8');
   assert(adminPageSource.includes('normalizeRichTextHtml(formData.descRich)'), '活动管理页保存链路没有直接读取表单富文本值');
   assert(adminFormSource.includes('<RichTextEditor'), '活动表单没有接入内置富文本编辑器');
   assert(adminDialogSource.includes('<RichTextContent html={selectedActivity?.descRich}'), '活动详情弹窗没有使用富文本查看组件');
+  assert(adminEditorSource.includes('cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js'), '富文本编辑器没有按 Quill CDN 方案接入脚本资源');
+  assert(adminEditorSource.includes("uploadFile({"), '富文本编辑器没有接入云存储图片上传逻辑');
+  assert(adminEditorSource.includes('replaceRichTextImageUrls'), '富文本编辑器没有把 cloud:// 图片替换成临时预览链接');
+  assert(adminContentSource.includes('getTempFileURL'), '后台查看组件没有接入 cloud:// 图片临时链接解析');
 
   const previewDir = path.join(repoRoot, 'docs', 'artifacts');
   fs.mkdirSync(previewDir, { recursive: true });
@@ -262,7 +268,7 @@ function main() {
   }), 'utf8');
 
   console.log('ADMIN_NORMALIZE_OK');
-  console.log('ADMIN_EDITOR_FLOW_OK');
+  console.log('ADMIN_QUILL_EDITOR_FLOW_OK');
   console.log('MINIPROGRAM_RICHTEXT_OK');
   console.log('SCHEMA_AND_PAGE_WIRING_OK');
   console.log(`PREVIEW_FILE=${previewFile}`);
