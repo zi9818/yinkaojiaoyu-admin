@@ -25,7 +25,7 @@
     {
       "name": "descRich",
       "title": "活动富文本描述",
-      "type": "MultiLineString"
+      "type": "RichText"
     },
     {
       "name": "price",

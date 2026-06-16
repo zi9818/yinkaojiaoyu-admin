@@ -6,6 +6,10 @@ import { Button, Badge } from '@/components/ui';
 import { MapPin, Tag, ImageIcon, Phone } from 'lucide-react';
 // @ts-ignore;
 import { RichTextContent } from '@/components/RichTextContent';
+import {
+  ACTIVITY_DESC_PREVIEW_COMPONENT_ID,
+  syncCloudBaseRichTextPreviewWhenReady
+} from '@/components/cloudbaseRichTextBridge';
 
 // @ts-ignore;
 import { ActivityForm } from './ActivityForm';
@@ -49,6 +53,7 @@ function InlineModal({
 }
 
 export function ActivityDialogs({
+  $w,
   showCreateDialog,
   setShowCreateDialog,
   showEditDialog,
@@ -71,7 +76,9 @@ export function ActivityDialogs({
   handleDetailImageUpload,
   handleRemoveDetailImage,
   handleAddTag,
-  handleRemoveTag
+  handleRemoveTag,
+  descEditorSlot,
+  descPreviewSlot
 }) {
   const normalizeContacts = (value) => {
     if (Array.isArray(value)) {
@@ -126,13 +133,21 @@ export function ActivityDialogs({
   const handleUpdateSubmit = () => {
     onUpdateActivity();
   };
+
+  React.useEffect(() => {
+    if (!$w || !descPreviewSlot || !showDetailDialog || typeof window === 'undefined') return undefined;
+
+    // 官方 RichTextView 通过插槽渲染，详情弹窗打开后再回填要展示的 HTML。
+    return syncCloudBaseRichTextPreviewWhenReady($w, selectedActivity?.descRich || '', selectedActivity?.desc || '');
+  }, [$w, descPreviewSlot, showDetailDialog, selectedActivity?.descRich, selectedActivity?.desc]);
+
   return <>
     {/* 创建活动对话框 */}
     <InlineModal open={showCreateDialog} onOpenChange={setShowCreateDialog} className="max-w-4xl max-h-[90vh] overflow-y-auto">
       <div className="p-6">
         <div className="text-2xl font-bold">创建新活动</div>
 
-        <ActivityForm formData={formData} setFormData={setFormData} onBannerImageUpload={handleBannerImageUpload} onRemoveBannerImage={handleRemoveBannerImage} onDetailImageUpload={handleDetailImageUpload} onRemoveDetailImage={handleRemoveDetailImage} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} isEdit={false} />
+        <ActivityForm $w={$w} formData={formData} setFormData={setFormData} onBannerImageUpload={handleBannerImageUpload} onRemoveBannerImage={handleRemoveBannerImage} onDetailImageUpload={handleDetailImageUpload} onRemoveDetailImage={handleRemoveDetailImage} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} descEditorSlot={descEditorSlot} isEdit={false} />
 
         <div className="flex justify-end gap-3 pt-4 border-t">
           <Button variant="outline" size="lg" onClick={() => setShowCreateDialog(false)}>
@@ -150,7 +165,7 @@ export function ActivityDialogs({
       <div className="p-6">
         <div className="text-2xl font-bold">编辑活动</div>
 
-        <ActivityForm formData={formData} setFormData={setFormData} onBannerImageUpload={handleBannerImageUpload} onRemoveBannerImage={handleRemoveBannerImage} onDetailImageUpload={handleDetailImageUpload} onRemoveDetailImage={handleRemoveDetailImage} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} isEdit={true} />
+        <ActivityForm $w={$w} formData={formData} setFormData={setFormData} onBannerImageUpload={handleBannerImageUpload} onRemoveBannerImage={handleRemoveBannerImage} onDetailImageUpload={handleDetailImageUpload} onRemoveDetailImage={handleRemoveDetailImage} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag} descEditorSlot={descEditorSlot} isEdit={true} />
 
         <div className="flex justify-end gap-3 pt-4 border-t">
           <Button size="lg" onClick={handleUpdateSubmit}>
@@ -214,7 +229,14 @@ export function ActivityDialogs({
           {/* 活动描述 */}
           <div>
             <h3 className="text-lg font-semibold mb-3">活动描述</h3>
-            <RichTextContent html={selectedActivity?.descRich} fallbackText={selectedActivity?.desc} />
+            {descPreviewSlot ? <div className="rounded-lg border border-gray-200 bg-white p-4">
+                {descPreviewSlot}
+              </div> : <>
+                <RichTextContent html={selectedActivity?.descRich} fallbackText={selectedActivity?.desc} />
+                <div className="mt-2 text-xs text-amber-700">
+                  当前仍在使用源码回退展示。若要切到 CloudBase 官方富文本展示，请在 JSX 页面高级属性中声明插槽 <code>descPreviewSlot</code>，拖入一个 <code>RichTextView</code> 组件，并将组件 ID 设为 <code>{ACTIVITY_DESC_PREVIEW_COMPONENT_ID}</code>。
+                </div>
+              </>}
           </div>
 
           {/* 活动地址 */}

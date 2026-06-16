@@ -1,0 +1,55 @@
+- main [ref=e2]:
+  - heading "CloudBase 富文本验收预览" [level=1] [ref=e3]
+  - paragraph [ref=e4]:
+    - text: 这个页面由
+    - code [ref=e5]: scripts/verify-cloudbase-richtext.cjs
+    - text: 生成，使用当前仓库的真实富文本工具函数产出后台查看态和小程序展示态的 HTML，用来辅助肉眼验收段落、列表、引用、换行与图片链接转换。
+  - generic [ref=e6]:
+    - article [ref=e7]:
+      - heading "原始富文本样例" [level=2] [ref=e8]
+      - paragraph [ref=e9]:
+        - text: 用于模拟 CloudBase 官方
+        - code [ref=e10]: WdRichText
+        - text: 保存到
+        - code [ref=e11]: descRich
+        - text: 的 HTML。
+      - generic [ref=e12]: "<h2>暑期活动说明</h2><p>第一段保留换行和段落结构。</p><ol><li>支持序号列表</li><li><span style=\"color: #2563eb\">支持颜色</span></li></ol><blockquote>引用内容也要保留。</blockquote><p><img src=\"cloud://demo-bucket/richtext/banner.png\" alt=\"活动配图\" /></p>"
+    - article [ref=e13]:
+      - heading "后台查看态" [level=2] [ref=e14]
+      - paragraph [ref=e15]: 对应 admin 详情弹窗使用的富文本展示结果。
+      - generic [ref=e16]:
+        - heading "暑期活动说明" [level=2] [ref=e17]
+        - paragraph [ref=e18]: 第一段保留换行和段落结构。
+        - list [ref=e19]:
+          - listitem [ref=e20]: 支持序号列表
+          - listitem [ref=e21]: 支持颜色
+        - blockquote [ref=e22]: 引用内容也要保留。
+        - paragraph [ref=e23]:
+          - img "活动配图" [ref=e24]
+    - article [ref=e25]:
+      - heading "小程序展示态" [level=2] [ref=e26]
+      - paragraph [ref=e27]:
+        - text: 对应小程序首页/订单详情的
+        - code [ref=e28]: rich-text
+        - text: 输入 HTML 近似预览。
+      - generic [ref=e29]:
+        - generic [ref=e30]: 活动介绍
+        - heading "暑期活动说明" [level=2] [ref=e31]
+        - paragraph [ref=e32]: 第一段保留换行和段落结构。
+        - list [ref=e33]:
+          - listitem [ref=e34]: 支持序号列表
+          - listitem [ref=e35]: 支持颜色
+        - blockquote [ref=e36]: 引用内容也要保留。
+        - paragraph [ref=e37]:
+          - img "活动配图" [ref=e38]
+    - article [ref=e39]:
+      - heading "纯文本回退展示态" [level=2] [ref=e40]
+      - paragraph [ref=e41]:
+        - text: 模拟历史数据只有
+        - code [ref=e42]: desc
+        - text: 、没有
+        - code [ref=e43]: descRich
+        - text: 时自动转换出的结构。
+      - paragraph [ref=e45]:
+        - text: 第一行保留换行
+        - text: 第二行继续展示

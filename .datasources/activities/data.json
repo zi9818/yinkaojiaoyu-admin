@@ -6,6 +6,7 @@
       "title": "2024冬季编程训练营",
       "subtitle": "10天精品课程",
       "desc": "专为青少年打造的编程入门课程，包含Scratch、Python基础、Web开发入门等精彩内容。",
+      "descRich": "<h2>训练营亮点</h2><p>专为青少年打造的编程入门课程，包含 Scratch、Python 基础、Web 开发入门等精彩内容。</p><ol><li>小班项目制实战</li><li>阶段作业讲评</li></ol><blockquote>帮助学生把兴趣转化为可持续的能力成长。</blockquote>",
       "price": 299,
       "bannerImages": [
         "cloud://cloud1-5gbxpkfm1326eb73.636c-cloud1-5gbxpkfm1326eb73-1389895146/5ba09352c4ac8.jpg",
@@ -30,6 +31,7 @@
       "title": "数学思维训练营",
       "subtitle": "20天思维提升",
       "desc": "奥数金牌教练授课，培养数学思维，提高解题能力，为各类数学竞赛打基础。",
+      "descRich": "<h3>课程内容</h3><p>奥数金牌教练授课，培养数学思维，提高解题能力。</p><p>为各类数学竞赛打基础，兼顾方法训练与题型拆解。</p>",
       "price": 399,
       "bannerImages": [
         "cloud://cloud1-5gbxpkfm1326eb73.636c/posters/math.jpg"
@@ -47,4 +49,3 @@
       "updatedAt": 1733630400000
     }
   ]
-  

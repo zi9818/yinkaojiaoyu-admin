@@ -7,6 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle, Button, Input, useToast } fro
 import { Activity } from 'lucide-react';
 import { ensureAdminAccess, getAuthSingleton } from './auth-guard';
 import { createRichTextSummary, getRichTextDisplayHtml, normalizeRichTextHtml } from '../components/richText';
+import {
+  ACTIVITY_DESC_EDITOR_COMPONENT_ID,
+  getCloudBaseRichTextEditorState,
+  isCloudBaseRichTextEditorReady
+} from '../components/cloudbaseRichTextBridge';
 
 // @ts-ignore;
 import { ActivityList } from '@/components/ActivityList';
@@ -18,7 +23,9 @@ import { ActivityFilters } from '@/components/ActivityFilters';
 import { ActivityDialogs } from '@/components/ActivityDialogs';
 export default function ActivityManagementPage(props) {
   const {
-    $w
+    $w,
+    descEditorSlot,
+    descPreviewSlot
   } = props;
   const NAV_TARGET_KEY = '__yinkaojiaoyu_admin_nav_target__';
 
@@ -383,6 +390,37 @@ export default function ActivityManagementPage(props) {
     return activities.some(activity => activity.isActive);
   };
 
+  const getCurrentDescRichValue = () => {
+    // 这里不能再用 editorValue || oldValue 的写法，否则用户清空富文本时会被旧内容“顶回来”。
+    const editorState = getCloudBaseRichTextEditorState($w);
+    if (editorState.hasStringValue) {
+      return normalizeRichTextHtml(editorState.value);
+    }
+    return normalizeRichTextHtml(formData.descRich);
+  };
+
+  const validateRichTextEditorBeforeSubmit = () => {
+    if (!descEditorSlot) {
+      toast({
+        title: "缺少富文本组件配置",
+        description: `当前页面还没有在 CloudBase JSX 高级属性里挂载 descEditorSlot。请先声明插槽，并拖入一个组件 ID 为 ${ACTIVITY_DESC_EDITOR_COMPONENT_ID} 的官方 WdRichText 组件后再保存。`,
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    if (!isCloudBaseRichTextEditorReady($w)) {
+      toast({
+        title: "富文本编辑器未就绪",
+        description: `已检测到页面准备切换官方富文本，但当前拿不到 ${ACTIVITY_DESC_EDITOR_COMPONENT_ID}.value。请检查插槽是否已挂载成功，以及组件 ID 是否与约定一致。`,
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   // 获取已发布的活动 - 使用isActive字段
   const getPublishedActivity = () => {
     return activities.find(activity => activity.isActive);
@@ -477,6 +515,8 @@ export default function ActivityManagementPage(props) {
       return;
     }
 
+    if (!validateRichTextEditorBeforeSubmit()) return;
+
     const rawCustomerNumbers = Array.isArray(formData.customerNumbers) ? formData.customerNumbers : [];
     const invalidCustomerNumbers = rawCustomerNumbers.filter(num => num && typeof num === 'string' && num.trim() && !isValidCustomerNumber(num));
     if (invalidCustomerNumbers.length > 0) {
@@ -532,8 +572,9 @@ export default function ActivityManagementPage(props) {
     }
 
     try {
-      const descRich = normalizeRichTextHtml(formData.descRich);
-      const descSummary = createRichTextSummary(descRich) || formData.desc.trim();
+      const descRich = getCurrentDescRichValue();
+      // 摘要始终由最终保存的富文本反推，避免用户清空富文本后仍残留旧摘要。
+      const descSummary = createRichTextSummary(descRich);
       const activityData = {
         title: formData.title.trim(),
         subtitle: formData.subtitle.trim(),
@@ -590,6 +631,8 @@ export default function ActivityManagementPage(props) {
       return;
     }
 
+    if (!validateRichTextEditorBeforeSubmit()) return;
+
     const rawCustomerNumbers = Array.isArray(formData.customerNumbers) ? formData.customerNumbers : [];
     const invalidCustomerNumbers = rawCustomerNumbers.filter(num => num && typeof num === 'string' && num.trim() && !isValidCustomerNumber(num));
     if (invalidCustomerNumbers.length > 0) {
@@ -644,8 +687,9 @@ export default function ActivityManagementPage(props) {
     }
 
     try {
-      const descRich = normalizeRichTextHtml(formData.descRich);
-      const descSummary = createRichTextSummary(descRich) || formData.desc.trim();
+      const descRich = getCurrentDescRichValue();
+      // 更新时同样只以本次编辑后的富文本为准，避免旧摘要污染查看页和小程序展示。
+      const descSummary = createRichTextSummary(descRich);
       const activityData = {
         title: formData.title.trim(),
         subtitle: formData.subtitle.trim(),
@@ -1068,7 +1112,7 @@ export default function ActivityManagementPage(props) {
         </div>
 
         {/* 对话框 */}
-        <ActivityDialogs showCreateDialog={showCreateDialog} setShowCreateDialog={setShowCreateDialog} showEditDialog={showEditDialog} setShowEditDialog={setShowEditDialog} showDetailDialog={showDetailDialog} setShowDetailDialog={setShowDetailDialog} selectedActivity={selectedActivity} formData={formData} setFormData={setFormData} onCreateActivity={handleCreateActivity} onUpdateActivity={handleUpdateActivity} onEdit={openEditDialog} onTogglePublish={handleTogglePublish} getStatusDisplay={getStatusDisplay} getStatusColor={getStatusColor} formatDateTime={formatDateTime} formatPrice={formatPrice} handleBannerImageUpload={handleBannerImageUpload} handleRemoveBannerImage={handleRemoveBannerImage} handleDetailImageUpload={handleDetailImageUpload} handleRemoveDetailImage={handleRemoveDetailImage} handleAddTag={handleAddTag} handleRemoveTag={handleRemoveTag} />
+        <ActivityDialogs $w={$w} showCreateDialog={showCreateDialog} setShowCreateDialog={setShowCreateDialog} showEditDialog={showEditDialog} setShowEditDialog={setShowEditDialog} showDetailDialog={showDetailDialog} setShowDetailDialog={setShowDetailDialog} selectedActivity={selectedActivity} formData={formData} setFormData={setFormData} onCreateActivity={handleCreateActivity} onUpdateActivity={handleUpdateActivity} onEdit={openEditDialog} onTogglePublish={handleTogglePublish} getStatusDisplay={getStatusDisplay} getStatusColor={getStatusColor} formatDateTime={formatDateTime} formatPrice={formatPrice} handleBannerImageUpload={handleBannerImageUpload} handleRemoveBannerImage={handleRemoveBannerImage} handleDetailImageUpload={handleDetailImageUpload} handleRemoveDetailImage={handleRemoveDetailImage} handleAddTag={handleAddTag} handleRemoveTag={handleRemoveTag} descEditorSlot={descEditorSlot} descPreviewSlot={descPreviewSlot} />
       </div>
     </div>;
 }
