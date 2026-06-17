@@ -2,17 +2,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 // @ts-ignore;
 import {
-  Bold,
-  Italic,
-  Underline,
-  Heading2,
-  Heading3,
-  List,
-  ListOrdered,
-  Quote,
-  Link,
-  Image as ImageIcon,
-  Eraser,
   Undo2,
   Redo2,
   LoaderCircle,
@@ -639,6 +628,11 @@ export function RichTextEditor({
           margin: 0 0 12px;
         }
 
+        .activity-quill-editor .ql-editor em,
+        .activity-quill-editor .ql-editor i {
+          font-style: italic;
+        }
+
         .activity-quill-editor .ql-editor ul,
         .activity-quill-editor .ql-editor ol {
           margin: 0 0 12px;
@@ -705,48 +699,26 @@ export function RichTextEditor({
         </span>
 
         <span className="ql-formats">
-          <button type="button" className="ql-bold" title="加粗">
-            <Bold className="h-4 w-4" />
-          </button>
-          <button type="button" className="ql-italic" title="斜体">
-            <Italic className="h-4 w-4" />
-          </button>
-          <button type="button" className="ql-underline" title="下划线">
-            <Underline className="h-4 w-4" />
-          </button>
+          <button type="button" className="ql-bold" title="加粗" />
+          <button type="button" className="ql-italic" title="斜体" />
+          <button type="button" className="ql-underline" title="下划线" />
         </span>
 
         <span className="ql-formats">
-          <button type="button" className="ql-header activity-quill-toolbar__heading" value="2" title="二级标题">
-            <Heading2 className="h-4 w-4" />
-          </button>
-          <button type="button" className="ql-header activity-quill-toolbar__heading" value="3" title="三级标题">
-            <Heading3 className="h-4 w-4" />
-          </button>
+          <button type="button" className="ql-header activity-quill-toolbar__heading" value="2" title="二级标题" />
+          <button type="button" className="ql-header activity-quill-toolbar__heading" value="3" title="三级标题" />
         </span>
 
         <span className="ql-formats">
-          <button type="button" className="ql-list" value="bullet" title="无序列表">
-            <List className="h-4 w-4" />
-          </button>
-          <button type="button" className="ql-list" value="ordered" title="有序列表">
-            <ListOrdered className="h-4 w-4" />
-          </button>
-          <button type="button" className="ql-blockquote" title="引用">
-            <Quote className="h-4 w-4" />
-          </button>
+          <button type="button" className="ql-list" value="bullet" title="无序列表" />
+          <button type="button" className="ql-list" value="ordered" title="有序列表" />
+          <button type="button" className="ql-blockquote" title="引用" />
         </span>
 
         <span className="ql-formats">
-          <button type="button" className="ql-link" title="插入链接">
-            <Link className="h-4 w-4" />
-          </button>
-          <button type="button" className="ql-image" title={uploading ? '图片上传中...' : '上传图片'}>
-            <ImageIcon className="h-4 w-4" />
-          </button>
-          <button type="button" className="ql-clean" title="清除格式">
-            <Eraser className="h-4 w-4" />
-          </button>
+          <button type="button" className="ql-link" title="插入链接" />
+          <button type="button" className="ql-image" title={uploading ? '图片上传中...' : '上传图片'} />
+          <button type="button" className="ql-clean" title="清除格式" />
         </span>
 
         <span className="ql-formats">

@@ -193,7 +193,7 @@ function main() {
 
   const sampleRichHtml = [
     '<h2>暑期活动说明</h2>',
-    '<p>第一段保留换行和段落结构。</p>',
+    '<p>第一段保留换行和<em>斜体</em>结构。</p>',
     '<ol><li>支持序号列表</li><li><span style="color: #2563eb">支持颜色</span></li></ol>',
     '<blockquote>引用内容也要保留。</blockquote>',
     '<p><img src="cloud://demo-bucket/richtext/banner.png" alt="活动配图" /></p>'
@@ -205,10 +205,11 @@ function main() {
   const adminNormalizedHtml = adminRichText.normalizeRichTextHtml(sampleRichHtml);
   assert(adminNormalizedHtml.includes('<ol'), '后台富文本规范化后丢失了有序列表结构');
   assert(adminNormalizedHtml.includes('<blockquote'), '后台富文本规范化后丢失了引用结构');
+  assert(adminNormalizedHtml.includes('<em'), '后台富文本规范化后丢失了斜体结构');
   assert(adminNormalizedHtml.includes('cloud://demo-bucket/richtext/banner.png'), '后台富文本规范化后丢失了云存储图片链接');
 
   const summary = adminRichText.createRichTextSummary(sampleRichHtml);
-  assert(summary.includes('第一段保留换行和段落结构'), '后台摘要生成未提取出正文内容');
+  assert(summary.includes('第一段保留换行') && summary.includes('斜体'), '后台摘要生成未提取出正文内容和斜体文字');
   assert(summary.includes('支持序号列表'), '后台摘要生成未提取出列表内容');
   assert(summary.includes('支持颜色'), '后台摘要生成未提取出带样式的列表项内容');
 

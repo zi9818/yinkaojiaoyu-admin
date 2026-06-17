@@ -104,6 +104,10 @@ export function RichTextContent({
           font-weight: 600;
           color: #111827;
         }
+        .activity-rich-text em,
+        .activity-rich-text i {
+          font-style: italic;
+        }
         .activity-rich-text ul,
         .activity-rich-text ol {
           margin: 0 0 12px;
