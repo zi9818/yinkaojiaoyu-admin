@@ -530,10 +530,6 @@ export function RichTextEditor({
           width: 5.25rem;
         }
 
-        .activity-quill-toolbar .ql-picker.ql-font {
-          width: 6.75rem;
-        }
-
         .activity-quill-toolbar .ql-picker.ql-background {
           width: 2.75rem;
         }
@@ -718,11 +714,6 @@ export function RichTextEditor({
             <option value="" />
             <option value="large" />
             <option value="huge" />
-          </select>
-          <select className="ql-font" defaultValue="" title="字体">
-            <option value="" />
-            <option value="serif" />
-            <option value="monospace" />
           </select>
         </span>
 

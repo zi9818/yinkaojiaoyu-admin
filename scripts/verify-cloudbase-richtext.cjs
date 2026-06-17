@@ -294,7 +294,7 @@ function main() {
   assert(adminEditorSource.includes('className="ql-background"'), '富文本编辑器没有接入 Quill 原生背景色控件');
   assert(adminEditorSource.includes('className="ql-script"'), '富文本编辑器没有接入 Quill 原生上下标控件');
   assert(adminEditorSource.includes('className="ql-code-block"'), '富文本编辑器没有接入 Quill 原生代码块控件');
-  assert(adminEditorSource.includes('className="ql-font"'), '富文本编辑器没有接入 Quill 原生字体控件');
+  assert(!adminEditorSource.includes('className="ql-font"'), '富文本编辑器不应放出字体选择控件');
   assert(adminEditorSource.includes('value="check"'), '富文本编辑器没有接入 Quill 原生检查清单控件');
   assert(!adminEditorSource.includes('COLOR_SWATCHES'), '富文本编辑器仍在维护自定义颜色数组，没有完全交给 Quill 原生色盘');
   assert(!/(formatText|formatLine|execCommand)\s*\(/.test(adminEditorSource), '富文本编辑器仍存在手写格式命令逻辑');
