@@ -30,6 +30,27 @@ const DEFAULT_STYLES = {
     'line-height': '1.5',
     color: '#111827'
   },
+  h4: {
+    margin: '0 0 10px',
+    'font-size': '16px',
+    'font-weight': '600',
+    'line-height': '1.5',
+    color: '#111827'
+  },
+  h5: {
+    margin: '0 0 10px',
+    'font-size': '14px',
+    'font-weight': '600',
+    'line-height': '1.5',
+    color: '#111827'
+  },
+  h6: {
+    margin: '0 0 10px',
+    'font-size': '12px',
+    'font-weight': '600',
+    'line-height': '1.5',
+    color: '#111827'
+  },
   ul: {
     margin: '0 0 12px',
     padding: '0 0 0 20px',
@@ -63,6 +84,22 @@ const DEFAULT_STYLES = {
   a: {
     color: '#2563eb',
     'text-decoration': 'underline'
+  },
+  pre: {
+    margin: '0 0 12px',
+    padding: '12px',
+    'border-radius': '8px',
+    'background-color': '#111827',
+    color: '#f9fafb',
+    'white-space': 'pre-wrap',
+    'word-break': 'break-word'
+  },
+  code: {
+    padding: '2px 4px',
+    'border-radius': '4px',
+    'background-color': '#f3f4f6',
+    'font-family': 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    'font-size': '0.9em'
   }
 };
 
@@ -77,13 +114,22 @@ const ALLOWED_TAGS = new Set([
   'EM',
   'I',
   'U',
+  'S',
+  'STRIKE',
+  'SUB',
+  'SUP',
   'UL',
   'OL',
   'LI',
   'H1',
   'H2',
   'H3',
+  'H4',
+  'H5',
+  'H6',
   'BLOCKQUOTE',
+  'PRE',
+  'CODE',
   'A',
   'SPAN',
   'IMG'
@@ -124,6 +170,10 @@ const ALLOWED_STYLE_PROPS = new Set([
   'padding-bottom',
   'line-height',
   'font-size',
+  'font-family',
+  'vertical-align',
+  'white-space',
+  'word-break',
   'display',
   'max-width',
   'height',
@@ -184,6 +234,26 @@ function sanitizeUrl(value, options = {}) {
     return raw;
   }
 
+  return '';
+}
+
+function sanitizeClassName(value) {
+  const allowedClasses = String(value || '')
+    .split(/\s+/)
+    .map((item) => item.trim())
+    // 这里只保留 Quill 官方格式 class，避免外部 class 影响后台页面样式或注入无关表现。
+    .filter((item) => /^ql-(size|font|align|direction|indent|color|bg)-[a-z0-9_-]+$/i.test(item));
+  return allowedClasses.join(' ');
+}
+
+function sanitizeDataAttribute(tag, name, value) {
+  const normalizedValue = String(value || '').trim();
+  if (tag === 'LI' && name === 'data-list') {
+    return /^(checked|unchecked|bullet|ordered)$/i.test(normalizedValue) ? normalizedValue.toLowerCase() : '';
+  }
+  if (tag === 'PRE' && name === 'data-language') {
+    return /^[a-z0-9_-]{1,32}$/i.test(normalizedValue) ? normalizedValue : '';
+  }
   return '';
 }
 
@@ -250,6 +320,26 @@ function sanitizeNodeTree(root) {
       }
 
       if (name === 'style') {
+        return;
+      }
+
+      if (name === 'class') {
+        const safeClassName = sanitizeClassName(value);
+        if (safeClassName) {
+          element.setAttribute('class', safeClassName);
+        } else {
+          element.removeAttribute(attr.name);
+        }
+        return;
+      }
+
+      if (name.startsWith('data-')) {
+        const safeDataValue = sanitizeDataAttribute(tag, name, value);
+        if (safeDataValue) {
+          element.setAttribute(attr.name, safeDataValue);
+        } else {
+          element.removeAttribute(attr.name);
+        }
         return;
       }
 
@@ -330,7 +420,7 @@ export function extractTextFromRichText(html) {
   if (typeof document === 'undefined') {
     return raw
       .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(p|div|li|h1|h2|h3|blockquote)>/gi, '\n')
+      .replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6|blockquote|pre)>/gi, '\n')
       .replace(/<[^>]+>/g, ' ')
       .replace(/&nbsp;/gi, ' ')
       .replace(/\s+\n/g, '\n')

@@ -27,34 +27,6 @@ const QUILL_CDN_SOURCES = [
 ];
 const QUILL_ASSET_TIMEOUT = 10000;
 
-// 颜色面板只扩展 Quill 原生 ql-color 下拉的色值，不额外接管编辑器格式逻辑。
-const COLOR_SWATCHES = [
-  '#111827',
-  '#1f2937',
-  '#374151',
-  '#6b7280',
-  '#9ca3af',
-  '#dc2626',
-  '#ef4444',
-  '#f97316',
-  '#ea580c',
-  '#f59e0b',
-  '#eab308',
-  '#65a30d',
-  '#16a34a',
-  '#10b981',
-  '#14b8a6',
-  '#06b6d4',
-  '#2563eb',
-  '#3b82f6',
-  '#6366f1',
-  '#7c3aed',
-  '#8b5cf6',
-  '#a855f7',
-  '#d946ef',
-  '#ec4899'
-];
-
 let quillAssetsPromise = null;
 let quillAssetSourceName = '';
 
@@ -550,24 +522,35 @@ export function RichTextEditor({
           background: #eff6ff;
         }
 
-        .activity-quill-toolbar .activity-quill-toolbar__heading {
-          width: auto !important;
-          min-width: 2.5rem;
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #374151;
+        .activity-quill-toolbar .ql-picker.ql-header {
+          width: 6.5rem;
+        }
+
+        .activity-quill-toolbar .ql-picker.ql-size {
+          width: 5.25rem;
+        }
+
+        .activity-quill-toolbar .ql-picker.ql-font {
+          width: 6.75rem;
+        }
+
+        .activity-quill-toolbar .ql-picker.ql-background {
+          width: 2.75rem;
         }
 
         .activity-quill-toolbar .ql-picker.ql-color {
           width: 2.75rem;
         }
 
-        .activity-quill-toolbar .ql-picker.ql-color .ql-picker-options {
+        .activity-quill-toolbar .ql-picker.ql-color .ql-picker-options,
+        .activity-quill-toolbar .ql-picker.ql-background .ql-picker-options {
           width: 224px;
         }
 
         .activity-quill-toolbar .ql-picker.ql-color .ql-picker-label,
-        .activity-quill-toolbar .ql-picker.ql-color .ql-picker-item {
+        .activity-quill-toolbar .ql-picker.ql-color .ql-picker-item,
+        .activity-quill-toolbar .ql-picker.ql-background .ql-picker-label,
+        .activity-quill-toolbar .ql-picker.ql-background .ql-picker-item {
           padding: 2px;
         }
 
@@ -620,6 +603,14 @@ export function RichTextEditor({
         .activity-quill-editor .ql-editor h3 {
           margin: 0 0 12px;
           font-size: 18px;
+          font-weight: 600;
+          line-height: 1.5;
+        }
+
+        .activity-quill-editor .ql-editor h4,
+        .activity-quill-editor .ql-editor h5,
+        .activity-quill-editor .ql-editor h6 {
+          margin: 0 0 10px;
           font-weight: 600;
           line-height: 1.5;
         }
@@ -689,6 +680,7 @@ export function RichTextEditor({
         </div> : null}
 
       <div ref={toolbarRef} className="activity-quill-toolbar">
+        {/* 以下格式控件全部使用 Quill 原生 ql-* toolbar class，具体格式切换行为交给 Quill 接管。 */}
         <span className="ql-formats">
           <button type="button" className="ql-undo" title="撤销">
             <Undo2 className="h-4 w-4" />
@@ -702,17 +694,50 @@ export function RichTextEditor({
           <button type="button" className="ql-bold" title="加粗" />
           <button type="button" className="ql-italic" title="斜体" />
           <button type="button" className="ql-underline" title="下划线" />
+          <button type="button" className="ql-strike" title="删除线" />
+          <button type="button" className="ql-code" title="行内代码" />
         </span>
 
         <span className="ql-formats">
-          <button type="button" className="ql-header activity-quill-toolbar__heading" value="2" title="二级标题" />
-          <button type="button" className="ql-header activity-quill-toolbar__heading" value="3" title="三级标题" />
+          <button type="button" className="ql-script" value="sub" title="下标" />
+          <button type="button" className="ql-script" value="super" title="上标" />
+        </span>
+
+        <span className="ql-formats">
+          <select className="ql-header" defaultValue="" title="标题">
+            <option value="1" />
+            <option value="2" />
+            <option value="3" />
+            <option value="4" />
+            <option value="5" />
+            <option value="6" />
+            <option value="" />
+          </select>
+          <select className="ql-size" defaultValue="" title="字号">
+            <option value="small" />
+            <option value="" />
+            <option value="large" />
+            <option value="huge" />
+          </select>
+          <select className="ql-font" defaultValue="" title="字体">
+            <option value="" />
+            <option value="serif" />
+            <option value="monospace" />
+          </select>
         </span>
 
         <span className="ql-formats">
           <button type="button" className="ql-list" value="bullet" title="无序列表" />
           <button type="button" className="ql-list" value="ordered" title="有序列表" />
+          <button type="button" className="ql-list" value="check" title="检查清单" />
           <button type="button" className="ql-blockquote" title="引用" />
+          <button type="button" className="ql-code-block" title="代码块" />
+        </span>
+
+        <span className="ql-formats">
+          <button type="button" className="ql-indent" value="-1" title="减少缩进" />
+          <button type="button" className="ql-indent" value="+1" title="增加缩进" />
+          <button type="button" className="ql-direction" value="rtl" title="从右到左" />
         </span>
 
         <span className="ql-formats">
@@ -722,10 +747,9 @@ export function RichTextEditor({
         </span>
 
         <span className="ql-formats">
-          <select className="ql-color" defaultValue="" title="文字颜色">
-            <option value="" />
-            {COLOR_SWATCHES.map((color) => <option key={color} value={color} />)}
-          </select>
+          {/* 空的 ql-color/ql-background 下拉会由 Quill Snow 主题自动填充默认色盘，避免自己维护一套颜色逻辑。 */}
+          <select className="ql-color" title="文字颜色" />
+          <select className="ql-background" title="背景颜色" />
           <select className="ql-align" defaultValue="" title="段落对齐">
             <option value="" />
             <option value="center" />

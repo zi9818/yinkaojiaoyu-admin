@@ -39,6 +39,23 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
+function readMiniActivitySchema(miniRepoRoot) {
+  const legacySchemaPath = path.join(miniRepoRoot, 'database', 'activities-schema.json');
+  if (fs.existsSync(legacySchemaPath)) {
+    return readJson(legacySchemaPath);
+  }
+
+  const cloudBaseSchemaPath = path.join(miniRepoRoot, 'database', 'activitesDatabase.json');
+  const cloudBaseSchema = readJson(cloudBaseSchemaPath);
+  return {
+    fields: Object.entries(cloudBaseSchema?.schema?.properties || {}).map(([name, field]) => ({
+      name,
+      type: field?.type,
+      title: field?.title
+    }))
+  };
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -193,9 +210,14 @@ function main() {
 
   const sampleRichHtml = [
     '<h2>暑期活动说明</h2>',
+    '<h4>报名提醒</h4>',
     '<p>第一段保留换行和<em>斜体</em>结构。</p>',
+    '<p><s>删除线</s><sub>下标</sub><sup>上标</sup><code>inlineCode</code></p>',
+    '<p class="ql-size-large ql-font-serif ql-align-center ql-color-red ql-bg-yellow">大号居中红字黄底</p>',
     '<ol><li>支持序号列表</li><li><span style="color: #2563eb">支持颜色</span></li></ol>',
+    '<ul><li data-list="checked">检查清单</li><li data-list="unchecked">待确认项</li></ul>',
     '<blockquote>引用内容也要保留。</blockquote>',
+    '<pre data-language="plain">console.log("ok")</pre>',
     '<p><img src="cloud://demo-bucket/richtext/banner.png" alt="活动配图" /></p>'
   ].join('');
   const previewImageUrl = `data:image/svg+xml;utf8,${encodeURIComponent(
@@ -206,17 +228,31 @@ function main() {
   assert(adminNormalizedHtml.includes('<ol'), '后台富文本规范化后丢失了有序列表结构');
   assert(adminNormalizedHtml.includes('<blockquote'), '后台富文本规范化后丢失了引用结构');
   assert(adminNormalizedHtml.includes('<em'), '后台富文本规范化后丢失了斜体结构');
+  assert(adminNormalizedHtml.includes('<h4'), '后台富文本规范化后丢失了四级标题结构');
+  assert(adminNormalizedHtml.includes('<s>删除线</s>'), '后台富文本规范化后丢失了删除线结构');
+  assert(adminNormalizedHtml.includes('<sub>下标</sub>') && adminNormalizedHtml.includes('<sup>上标</sup>'), '后台富文本规范化后丢失了上下标结构');
+  assert(adminNormalizedHtml.includes('<code>inlineCode</code>'), '后台富文本规范化后丢失了行内代码结构');
+  assert(adminNormalizedHtml.includes('data-list="checked"'), '后台富文本规范化后丢失了检查清单状态');
+  assert(adminNormalizedHtml.includes('<pre data-language="plain">'), '后台富文本规范化后丢失了代码块结构');
   assert(adminNormalizedHtml.includes('cloud://demo-bucket/richtext/banner.png'), '后台富文本规范化后丢失了云存储图片链接');
 
   const summary = adminRichText.createRichTextSummary(sampleRichHtml);
   assert(summary.includes('第一段保留换行') && summary.includes('斜体'), '后台摘要生成未提取出正文内容和斜体文字');
   assert(summary.includes('支持序号列表'), '后台摘要生成未提取出列表内容');
   assert(summary.includes('支持颜色'), '后台摘要生成未提取出带样式的列表项内容');
+  assert(summary.includes('检查清单') && summary.includes('console.log("ok")'), '后台摘要生成未提取出检查清单或代码块内容');
 
   const miniPreviewHtml = miniRichText.getRichTextDisplayHtml(sampleRichHtml, summary);
   assert(miniPreviewHtml.includes('<ol'), '小程序展示 HTML 丢失了有序列表结构');
   assert(miniPreviewHtml.includes('<blockquote'), '小程序展示 HTML 丢失了引用结构');
   assert(miniPreviewHtml.includes('list-style-type: decimal'), '小程序展示 HTML 缺少显式有序列表样式');
+  assert(miniPreviewHtml.includes('font-size: 1.5em'), '小程序展示 HTML 没有把 Quill 字号 class 转成内联样式');
+  assert(miniPreviewHtml.includes('font-family: Georgia, Times New Roman, serif'), '小程序展示 HTML 没有把 Quill 字体 class 转成内联样式');
+  assert(miniPreviewHtml.includes('text-align: center'), '小程序展示 HTML 没有把 Quill 居中 class 转成内联样式');
+  assert(miniPreviewHtml.includes('color: #e60000'), '小程序展示 HTML 没有把 Quill 默认文字色 class 转成内联样式');
+  assert(miniPreviewHtml.includes('background-color: #ffff00'), '小程序展示 HTML 没有把 Quill 默认背景色 class 转成内联样式');
+  assert(miniPreviewHtml.includes('☑ 检查清单') && miniPreviewHtml.includes('☐ 待确认项'), '小程序展示 HTML 没有把 Quill 检查清单转成可见标记');
+  assert(miniPreviewHtml.includes('vertical-align: sub') && miniPreviewHtml.includes('vertical-align: super'), '小程序展示 HTML 缺少上下标内联样式');
 
   const fallbackPlainText = '第一行保留换行\n第二行继续展示';
   const richTextImageIds = miniRichText.extractCloudRichTextImageIds(miniPreviewHtml);
@@ -232,11 +268,11 @@ function main() {
   assert(fallbackPreviewHtml.includes('<br />'), '历史纯文本描述回退时没有保留换行');
 
   const adminSchema = readJson(path.join(repoRoot, '.datasources', 'activities', 'schema.json'));
-  const miniSchema = readJson(path.join(miniRepoRoot, 'database', 'activities-schema.json'));
+  const miniSchema = readMiniActivitySchema(miniRepoRoot);
   const adminDescRichField = (adminSchema.schemas || adminSchema.fields || []).find((field) => field.name === 'descRich');
   const miniDescRichField = (miniSchema.fields || []).find((field) => field.name === 'descRich');
   assert(adminDescRichField && adminDescRichField.type === 'RichText', 'admin 数据源里的 descRich 字段类型不是 RichText');
-  assert(miniDescRichField && miniDescRichField.type === 'RichText', '小程序数据模型里的 descRich 字段类型不是 RichText');
+  assert(miniDescRichField && (miniDescRichField.type === 'RichText' || miniDescRichField.type === 'string'), '小程序数据模型里缺少可存储富文本 HTML 的 descRich 字段');
 
   const adminMockData = readJson(path.join(repoRoot, '.datasources', 'activities', 'data.json'));
   assert(Array.isArray(adminMockData) && adminMockData.some((item) => typeof item?.descRich === 'string' && item.descRich.trim()), 'admin 本地 datasource 示例数据里缺少 descRich 样例');
@@ -254,6 +290,14 @@ function main() {
   assert(adminEditorSource.includes('QUILL_CDN_SOURCES'), '富文本编辑器没有维护 Quill CDN 资源源清单');
   assert(adminEditorSource.includes('className="ql-align"'), '富文本编辑器没有接入 Quill 原生段落对齐控件');
   assert(adminEditorSource.includes('value="justify"'), '富文本编辑器没有接入 Quill 原生两端对齐选项');
+  assert(adminEditorSource.includes('className="ql-size"'), '富文本编辑器没有接入 Quill 原生字号控件');
+  assert(adminEditorSource.includes('className="ql-background"'), '富文本编辑器没有接入 Quill 原生背景色控件');
+  assert(adminEditorSource.includes('className="ql-script"'), '富文本编辑器没有接入 Quill 原生上下标控件');
+  assert(adminEditorSource.includes('className="ql-code-block"'), '富文本编辑器没有接入 Quill 原生代码块控件');
+  assert(adminEditorSource.includes('className="ql-font"'), '富文本编辑器没有接入 Quill 原生字体控件');
+  assert(adminEditorSource.includes('value="check"'), '富文本编辑器没有接入 Quill 原生检查清单控件');
+  assert(!adminEditorSource.includes('COLOR_SWATCHES'), '富文本编辑器仍在维护自定义颜色数组，没有完全交给 Quill 原生色盘');
+  assert(!/(formatText|formatLine|execCommand)\s*\(/.test(adminEditorSource), '富文本编辑器仍存在手写格式命令逻辑');
   assert(adminEditorSource.includes("uploadFile({"), '富文本编辑器没有接入云存储图片上传逻辑');
   assert(adminEditorSource.includes('replaceRichTextImageUrls'), '富文本编辑器没有把 cloud:// 图片替换成临时预览链接');
   assert(adminContentSource.includes('getTempFileURL'), '后台查看组件没有接入 cloud:// 图片临时链接解析');
