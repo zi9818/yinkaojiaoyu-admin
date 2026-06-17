@@ -7,6 +7,10 @@ import {
   Underline,
   Heading2,
   Heading3,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
   List,
   ListOrdered,
   Quote,
@@ -24,30 +28,116 @@ import {
   replaceRichTextImageUrls
 } from './richText';
 
-const QUILL_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js';
-const QUILL_STYLE_URL = 'https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css';
+const QUILL_CDN_SOURCES = [
+  {
+    name: 'jsDelivr',
+    scriptUrl: 'https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js',
+    styleUrl: 'https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css'
+  },
+  {
+    name: 'JSDMirror',
+    scriptUrl: 'https://cdn.jsdmirror.com/npm/quill@2.0.3/dist/quill.js',
+    styleUrl: 'https://cdn.jsdmirror.com/npm/quill@2.0.3/dist/quill.snow.css'
+  }
+];
+const QUILL_ASSET_TIMEOUT = 10000;
 
+// 颜色面板保留常用深浅层级和暖冷色，避免活动运营同学只能在少量颜色里硬选。
 const COLOR_SWATCHES = [
   '#111827',
+  '#1f2937',
+  '#374151',
+  '#6b7280',
+  '#9ca3af',
   '#dc2626',
+  '#ef4444',
+  '#f97316',
   '#ea580c',
+  '#f59e0b',
+  '#eab308',
+  '#65a30d',
   '#16a34a',
+  '#10b981',
+  '#14b8a6',
+  '#06b6d4',
   '#2563eb',
-  '#7c3aed'
+  '#3b82f6',
+  '#6366f1',
+  '#7c3aed',
+  '#8b5cf6',
+  '#a855f7',
+  '#d946ef',
+  '#ec4899'
 ];
 
 let quillAssetsPromise = null;
+let quillAssetSourceName = '';
+
+function waitForAssetLoad(element, assetType, url) {
+  const currentState = element?.dataset?.loadState;
+  if (currentState === 'loaded') {
+    return Promise.resolve();
+  }
+  if (currentState === 'failed') {
+    return Promise.reject(new Error(`加载 Quill ${assetType}失败：${url}`));
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+
+    const cleanup = () => {
+      if (typeof window !== 'undefined') {
+        window.clearTimeout(timer);
+      }
+      element.removeEventListener('load', handleLoad);
+      element.removeEventListener('error', handleError);
+    };
+
+    const finish = (isSuccess, message) => {
+      if (settled) return;
+      settled = true;
+      element.dataset.loadState = isSuccess ? 'loaded' : 'failed';
+      cleanup();
+      if (isSuccess) {
+        resolve();
+        return;
+      }
+      reject(new Error(message));
+    };
+
+    const handleLoad = () => finish(true);
+    const handleError = () => finish(false, `加载 Quill ${assetType}失败：${url}`);
+    const timer = typeof window !== 'undefined'
+      ? window.setTimeout(() => finish(false, `加载 Quill ${assetType}超时：${url}`), QUILL_ASSET_TIMEOUT)
+      : null;
+
+    element.addEventListener('load', handleLoad);
+    element.addEventListener('error', handleError);
+  });
+}
 
 function ensureStyleSheet(url) {
-  if (typeof document === 'undefined') return;
+  if (typeof document === 'undefined') {
+    return Promise.reject(new Error('当前环境不支持动态加载 Quill 样式'));
+  }
+
   const existed = document.querySelector(`link[data-activity-richtext-style="${url}"]`);
-  if (existed) return;
+  if (existed) {
+    if (existed.dataset.loadState === 'failed') {
+      existed.remove();
+    } else {
+      return waitForAssetLoad(existed, '样式', url);
+    }
+  }
 
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = url;
   link.setAttribute('data-activity-richtext-style', url);
+  link.dataset.loadState = 'loading';
+  const loadPromise = waitForAssetLoad(link, '样式', url);
   document.head.appendChild(link);
+  return loadPromise;
 }
 
 function ensureScript(url) {
@@ -63,26 +153,38 @@ function ensureScript(url) {
   return new Promise((resolve, reject) => {
     const existed = document.querySelector(`script[data-activity-richtext-script="${url}"]`);
     if (existed) {
-      existed.addEventListener('load', () => resolve(win.Quill));
-      existed.addEventListener('error', () => reject(new Error(`加载 Quill 脚本失败：${url}`)));
-      return;
+      if (existed.dataset.loadState === 'failed') {
+        existed.remove();
+      } else {
+        waitForAssetLoad(existed, '脚本', url)
+          .then(() => {
+            if (win.Quill) {
+              resolve(win.Quill);
+              return;
+            }
+            reject(new Error('Quill 脚本已加载，但窗口对象上没有 Quill'));
+          })
+          .catch(reject);
+        return;
+      }
     }
 
     const script = document.createElement('script');
     script.src = url;
     script.async = true;
     script.setAttribute('data-activity-richtext-script', url);
-    script.onload = () => {
-      if (win.Quill) {
-        resolve(win.Quill);
-        return;
-      }
-      reject(new Error('Quill 脚本已加载，但窗口对象上没有 Quill'));
-    };
-    script.onerror = () => {
-      reject(new Error(`加载 Quill 脚本失败：${url}`));
-    };
+    script.dataset.loadState = 'loading';
+    const loadPromise = waitForAssetLoad(script, '脚本', url);
     document.body.appendChild(script);
+    loadPromise
+      .then(() => {
+        if (win.Quill) {
+          resolve(win.Quill);
+          return;
+        }
+        reject(new Error('Quill 脚本已加载，但窗口对象上没有 Quill'));
+      })
+      .catch(reject);
   });
 }
 
@@ -92,17 +194,37 @@ function ensureQuillAssets() {
   }
 
   if (window.Quill) {
-    return Promise.resolve(window.Quill);
+    return Promise.resolve({
+      Quill: window.Quill,
+      sourceName: quillAssetSourceName || '当前页面缓存'
+    });
   }
 
   if (!quillAssetsPromise) {
     quillAssetsPromise = Promise.resolve()
-      .then(() => {
-        ensureStyleSheet(QUILL_STYLE_URL);
-        return ensureScript(QUILL_SCRIPT_URL);
+      .then(async () => {
+        const loadErrors = [];
+
+        // 这里按“主源 -> 国内镜像”顺序加载，避免 CloudBase 页面偶发访问海外 CDN 失败时直接不可用。
+        for (const source of QUILL_CDN_SOURCES) {
+          try {
+            await ensureStyleSheet(source.styleUrl);
+            const Quill = await ensureScript(source.scriptUrl);
+            quillAssetSourceName = source.name;
+            return {
+              Quill,
+              sourceName: source.name
+            };
+          } catch (error) {
+            loadErrors.push(`${source.name}: ${error?.message || '未知错误'}`);
+          }
+        }
+
+        throw new Error(`Quill 资源加载失败，已依次尝试 ${QUILL_CDN_SOURCES.map((item) => item.name).join(' -> ')}。${loadErrors.join('；')}`);
       })
       .catch((error) => {
         quillAssetsPromise = null;
+        quillAssetSourceName = '';
         throw error;
       });
   }
@@ -262,7 +384,7 @@ export function RichTextEditor({
       setErrorMessage('');
 
       try {
-        const Quill = await ensureQuillAssets();
+        const { Quill } = await ensureQuillAssets();
         if (cancelled || quillRef.current || !editorHostRef.current || !toolbarRef.current) return;
 
         const quill = new Quill(editorHostRef.current, {
@@ -455,6 +577,10 @@ export function RichTextEditor({
           width: 2.75rem;
         }
 
+        .activity-quill-toolbar .ql-picker.ql-color .ql-picker-options {
+          width: 224px;
+        }
+
         .activity-quill-toolbar .ql-picker.ql-color .ql-picker-label,
         .activity-quill-toolbar .ql-picker.ql-color .ql-picker-item {
           padding: 2px;
@@ -568,7 +694,7 @@ export function RichTextEditor({
             <span>Quill 富文本编辑器初始化失败</span>
           </div>
           <div className="mt-2 text-xs leading-6 text-red-600">
-            {errorMessage}。请确认当前 CloudBase 页面可以访问 <code>jsdelivr</code> CDN 资源。
+            {errorMessage}。当前组件会自动按 <code>jsDelivr</code> -&gt; <code>JSDMirror</code> 顺序重试，请确认 CloudBase 页面至少可以访问其中一个 CDN。
           </div>
         </div> : null}
 
@@ -628,6 +754,21 @@ export function RichTextEditor({
         </span>
 
         <span className="ql-formats">
+          <button type="button" className="ql-align" title="左对齐">
+            <AlignLeft className="h-4 w-4" />
+          </button>
+          <button type="button" className="ql-align" value="center" title="居中对齐">
+            <AlignCenter className="h-4 w-4" />
+          </button>
+          <button type="button" className="ql-align" value="right" title="右对齐">
+            <AlignRight className="h-4 w-4" />
+          </button>
+          <button type="button" className="ql-align" value="justify" title="两端对齐">
+            <AlignJustify className="h-4 w-4" />
+          </button>
+        </span>
+
+        <span className="ql-formats">
           <select className="ql-color" defaultValue="" title="文字颜色">
             <option value="" />
             {COLOR_SWATCHES.map((color) => <option key={color} value={color} />)}
@@ -644,9 +785,5 @@ export function RichTextEditor({
         accept="image/*"
         onChange={handleRichTextImageSelect}
       />
-
-      <div className="text-xs text-gray-500">
-        当前使用 Quill CDN 富文本编辑器，支持标题、列表、引用、链接、颜色和图片上传；保存时会直接写入 <code>descRich</code>，后台查看页和小程序会共用同一份 HTML。
-      </div>
     </div>;
 }

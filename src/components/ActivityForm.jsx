@@ -399,9 +399,6 @@ export function ActivityForm({
               }));
             }}
           />
-          <div className="text-xs text-gray-500">
-            当前使用页面内置富文本编辑器，支持标题、列表、引用、链接和颜色；保存时会直接落库到 <code>descRich</code>，活动摘要会自动同步生成。
-          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
