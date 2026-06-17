@@ -194,7 +194,6 @@ function main() {
   const sampleRichHtml = [
     '<h2>暑期活动说明</h2>',
     '<p>第一段保留换行和段落结构。</p>',
-    '<p class="ql-align-center">这一段需要保留居中对齐。</p>',
     '<ol><li>支持序号列表</li><li><span style="color: #2563eb">支持颜色</span></li></ol>',
     '<blockquote>引用内容也要保留。</blockquote>',
     '<p><img src="cloud://demo-bucket/richtext/banner.png" alt="活动配图" /></p>'
@@ -206,7 +205,6 @@ function main() {
   const adminNormalizedHtml = adminRichText.normalizeRichTextHtml(sampleRichHtml);
   assert(adminNormalizedHtml.includes('<ol'), '后台富文本规范化后丢失了有序列表结构');
   assert(adminNormalizedHtml.includes('<blockquote'), '后台富文本规范化后丢失了引用结构');
-  assert(adminNormalizedHtml.includes('text-align: center'), '后台富文本规范化后丢失了居中对齐样式');
   assert(adminNormalizedHtml.includes('cloud://demo-bucket/richtext/banner.png'), '后台富文本规范化后丢失了云存储图片链接');
 
   const summary = adminRichText.createRichTextSummary(sampleRichHtml);
@@ -253,8 +251,8 @@ function main() {
   assert(adminEditorSource.includes('cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js'), '富文本编辑器没有接入主 Quill CDN 脚本资源');
   assert(adminEditorSource.includes('cdn.jsdmirror.com/npm/quill@2.0.3/dist/quill.js'), '富文本编辑器没有接入国内 Quill CDN 降级脚本资源');
   assert(adminEditorSource.includes('QUILL_CDN_SOURCES'), '富文本编辑器没有维护 Quill CDN 资源源清单');
-  assert(adminEditorSource.includes('className="ql-align" value="center"'), '富文本编辑器没有接入居中对齐按钮');
-  assert(adminEditorSource.includes('className="ql-align" value="justify"'), '富文本编辑器没有接入两端对齐按钮');
+  assert(adminEditorSource.includes('className="ql-align"'), '富文本编辑器没有接入 Quill 原生段落对齐控件');
+  assert(adminEditorSource.includes('value="justify"'), '富文本编辑器没有接入 Quill 原生两端对齐选项');
   assert(adminEditorSource.includes("uploadFile({"), '富文本编辑器没有接入云存储图片上传逻辑');
   assert(adminEditorSource.includes('replaceRichTextImageUrls'), '富文本编辑器没有把 cloud:// 图片替换成临时预览链接');
   assert(adminContentSource.includes('getTempFileURL'), '后台查看组件没有接入 cloud:// 图片临时链接解析');

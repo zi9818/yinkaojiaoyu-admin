@@ -196,63 +196,6 @@ function unwrapElement(element) {
   parent.removeChild(element);
 }
 
-function normalizeQuillClassStyleText(attrText) {
-  const rawAttrText = String(attrText || '');
-  const classMatch = rawAttrText.match(/\bclass\s*=\s*(['"])(.*?)\1/i);
-  if (!classMatch) return rawAttrText;
-
-  const classList = String(classMatch[2] || '').split(/\s+/).map((item) => item.trim()).filter(Boolean);
-  if (classList.length === 0) return rawAttrText;
-
-  let alignValue = '';
-  if (classList.includes('ql-align-center')) {
-    alignValue = 'center';
-  } else if (classList.includes('ql-align-right')) {
-    alignValue = 'right';
-  } else if (classList.includes('ql-align-justify')) {
-    alignValue = 'justify';
-  }
-  if (!alignValue) return rawAttrText;
-
-  const styleMatch = rawAttrText.match(/\bstyle\s*=\s*(['"])(.*?)\1/i);
-  const nextStyles = parseStyleText(styleMatch?.[2] || '');
-  nextStyles['text-align'] = alignValue;
-
-  const keptClasses = classList.filter((item) => !/^ql-align-(center|right|justify)$/.test(item));
-  let nextAttrText = rawAttrText.replace(/\s*\bclass\s*=\s*(['"])(.*?)\1/i, keptClasses.length > 0 ? ` class="${keptClasses.join(' ')}"` : '');
-  const styleText = styleMapToText(nextStyles);
-  if (styleMatch) {
-    nextAttrText = nextAttrText.replace(/\bstyle\s*=\s*(['"])(.*?)\1/i, styleText ? `style="${styleText}"` : '');
-  } else if (styleText) {
-    nextAttrText += ` style="${styleText}"`;
-  }
-  return nextAttrText;
-}
-
-function applyQuillClassStyles(element) {
-  const classList = Array.from(element.classList || []);
-  if (classList.length === 0) return;
-
-  const nextStyles = parseStyleText(element.getAttribute('style') || '');
-
-  // Quill 的语义化 HTML 可能把对齐信息落在 class 上，这里在入库前转成内联样式，
-  // 避免后续清洗 class 属性时把居中、右对齐、两端对齐这些排版能力一起丢掉。
-  if (classList.includes('ql-align-center')) {
-    nextStyles['text-align'] = 'center';
-  } else if (classList.includes('ql-align-right')) {
-    nextStyles['text-align'] = 'right';
-  } else if (classList.includes('ql-align-justify')) {
-    nextStyles['text-align'] = 'justify';
-  }
-
-  const styleText = styleMapToText(nextStyles);
-  if (styleText) {
-    element.setAttribute('style', styleText);
-  } else {
-    element.removeAttribute('style');
-  }
-}
-
 function applyDefaultStyles(element) {
   const tag = String(element.tagName || '').toLowerCase();
   const nextStyles = {
@@ -294,8 +237,6 @@ function sanitizeNodeTree(root) {
       unwrapElement(element);
       return;
     }
-
-    applyQuillClassStyles(element);
 
     Array.from(element.attributes || []).forEach((attr) => {
       const name = String(attr.name || '').toLowerCase();
@@ -369,7 +310,6 @@ export function sanitizeRichTextHtml(html) {
 
   if (typeof document === 'undefined') {
     return raw
-      .replace(/<([a-z0-9]+)\b([^<>]*?)>/gi, (match, tagName, attrText) => `<${tagName}${normalizeQuillClassStyleText(attrText)}>`)
       .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '')
       .replace(/\son\w+="[^"]*"/gi, '')

@@ -7,10 +7,6 @@ import {
   Underline,
   Heading2,
   Heading3,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
   List,
   ListOrdered,
   Quote,
@@ -42,7 +38,7 @@ const QUILL_CDN_SOURCES = [
 ];
 const QUILL_ASSET_TIMEOUT = 10000;
 
-// 颜色面板保留常用深浅层级和暖冷色，避免活动运营同学只能在少量颜色里硬选。
+// 颜色面板只扩展 Quill 原生 ql-color 下拉的色值，不额外接管编辑器格式逻辑。
 const COLOR_SWATCHES = [
   '#111827',
   '#1f2937',
@@ -754,24 +750,15 @@ export function RichTextEditor({
         </span>
 
         <span className="ql-formats">
-          <button type="button" className="ql-align" title="左对齐">
-            <AlignLeft className="h-4 w-4" />
-          </button>
-          <button type="button" className="ql-align" value="center" title="居中对齐">
-            <AlignCenter className="h-4 w-4" />
-          </button>
-          <button type="button" className="ql-align" value="right" title="右对齐">
-            <AlignRight className="h-4 w-4" />
-          </button>
-          <button type="button" className="ql-align" value="justify" title="两端对齐">
-            <AlignJustify className="h-4 w-4" />
-          </button>
-        </span>
-
-        <span className="ql-formats">
           <select className="ql-color" defaultValue="" title="文字颜色">
             <option value="" />
             {COLOR_SWATCHES.map((color) => <option key={color} value={color} />)}
+          </select>
+          <select className="ql-align" defaultValue="" title="段落对齐">
+            <option value="" />
+            <option value="center" />
+            <option value="right" />
+            <option value="justify" />
           </select>
         </span>
       </div>
